@@ -98,7 +98,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
-import org.apache.hadoop.hbase.util.HBaseFsck;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.zookeeper.KeeperException;
@@ -860,7 +859,6 @@ public class TestSplitTransactionOnCluster {
       // Precondition: we created a table with no data, no store files.
       printOutRegions(regionServer, "Initial regions: ");
       Configuration conf = cluster.getConfiguration();
-      HBaseFsck.debugLsr(conf, new Path("/"));
       Path rootDir = CommonFSUtils.getRootDir(conf);
       FileSystem fs = TESTING_UTIL.getDFSCluster().getFileSystem();
       Map<String, Path> storefiles = FSUtils.getTableStoreFilePathMap(null, fs, rootDir, tableName);
@@ -884,7 +882,6 @@ public class TestSplitTransactionOnCluster {
       assertEquals(2, daughters.size());
 
       // check dirs
-      HBaseFsck.debugLsr(conf, new Path("/"));
       Map<String, Path> storefilesAfter =
         FSUtils.getTableStoreFilePathMap(null, fs, rootDir, tableName);
       assertEquals("Expected nothing but found " + storefilesAfter.toString(), 0,

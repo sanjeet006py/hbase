@@ -42,7 +42,7 @@ public class TestIntegrationTestBase {
     conf.set("hbase.rootdir", "/foo/bar/baz");
 
     final Properties props = new Properties();
-    IntegrationTestBase testBase = new IntegrationTestDDLMasterFailover();
+    IntegrationTestBase testBase = new IntegrationTestIngest();
     assertEquals(0, props.size());
     testBase.loadMonkeyProperties(props, conf);
     assertEquals(2, props.size());

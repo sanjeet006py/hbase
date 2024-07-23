@@ -150,9 +150,9 @@ public abstract class ScheduledChore implements Runnable {
     } else {
       try {
         // TODO: Histogram metrics per chore name.
-        // For now, just measure and log if DEBUG level logging is enabled.
+        // For now, just measure and log if TRACE level logging is enabled.
         long start = 0;
-        if (LOG.isDebugEnabled()) {
+        if (LOG.isTraceEnabled()) {
           start = System.nanoTime();
         }
         if (!initialChoreComplete) {
@@ -160,9 +160,9 @@ public abstract class ScheduledChore implements Runnable {
         } else {
           chore();
         }
-        if (LOG.isDebugEnabled() && start > 0) {
+        if (LOG.isTraceEnabled() && start > 0) {
           long end = System.nanoTime();
-          LOG.debug("{} execution time: {} ms.", getName(),
+          LOG.trace("{} execution time: {} ms.", getName(),
             TimeUnit.NANOSECONDS.toMillis(end - start));
         }
       } catch (Throwable t) {

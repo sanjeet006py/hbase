@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.AsyncConnection;
@@ -253,6 +254,7 @@ public class ReplicationSink {
               buildBulkLoadHFileMap(bulkLoadHFileMap, table, bld);
             }
           } else if (CellUtil.matchingQualifier(cell, WALEdit.REPLICATION_MARKER)) {
+            cell = PrivateCellUtil.deepClone(cell); // Ensure cell buffer is independently managed
             Mutation put = processReplicationMarkerEntry(cell);
             if (put == null) {
               continue;
@@ -265,6 +267,7 @@ public class ReplicationSink {
             addToHashMultiMap(rowMap, table, clusterIds, put);
           } else {
             // Handle wal replication
+            cell = PrivateCellUtil.deepClone(cell); // Ensure cell buffer is independently managed
             if (isNewRowOrType(previousCell, cell)) {
               // Create new mutation
               mutation = CellUtil.isDelete(cell)
@@ -335,6 +338,8 @@ public class ReplicationSink {
       LOG.error("Unable to accept edit because:", ex);
       this.metrics.incrementFailedBatches();
       throw ex;
+    } catch (CloneNotSupportedException e) {
+      throw new IOException(e);
     }
   }
 

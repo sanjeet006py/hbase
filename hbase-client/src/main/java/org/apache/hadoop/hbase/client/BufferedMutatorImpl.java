@@ -276,7 +276,7 @@ public class BufferedMutatorImpl implements BufferedMutator {
    * @param flushAll - if true, sends all the writes and wait for all of them to finish before
    *                 returning. Otherwise, flush until buffer size is smaller than threshold
    */
-  private void doFlush(boolean flushAll)
+  protected void doFlush(boolean flushAll)
     throws InterruptedIOException, RetriesExhaustedWithDetailsException {
     List<RetriesExhaustedWithDetailsException> errors = new ArrayList<>();
     while (true) {

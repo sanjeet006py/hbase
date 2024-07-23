@@ -413,6 +413,13 @@ fi
 if $cygwin; then
   JAVA_LIBRARY_PATH=`cygpath -p "$JAVA_LIBRARY_PATH"`
 fi
+ 
+# If async-profiler is available in the expected location under lib/native/, export
+# ASYNC_PROFILER_HOME for use by the profiler servlet
+ASYNC_PROFILER_EMBEDDED="${HBASE_HOME}/lib/native/${JAVA_PLATFORM}/async-profiler"
+if [ -d "$ASYNC_PROFILER_EMBEDDED" ]; then
+  export ASYNC_PROFILER_HOME=${ASYNC_PROFILER_EMBEDDED}
+fi
 
 # restore ordinary behaviour
 unset IFS

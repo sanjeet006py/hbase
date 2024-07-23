@@ -17,10 +17,13 @@
  */
 package org.apache.hadoop.hbase.regionserver.wal;
 
+import static org.apache.hadoop.hbase.HConstants.REPLICATION_SCOPE_GLOBAL;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.function.Function;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,8 +31,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.wal.NoRegionWALEdit;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.hbase.wal.WALKeyImpl;
@@ -216,5 +221,13 @@ public class WALUtil {
     if (newSize < size / 2) {
       cells.trimToSize();
     }
+  }
+
+  public static void writeReplicationMarkerAndSync(WAL wal, MultiVersionConcurrencyControl mvcc,
+    RegionInfo regionInfo, byte[] rowKey, long timestamp) throws IOException {
+    NavigableMap<byte[], Integer> replicationScope = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    replicationScope.put(WALEdit.METAFAMILY, REPLICATION_SCOPE_GLOBAL);
+    writeMarker(wal, replicationScope, regionInfo,
+      NoRegionWALEdit.createReplicationMarkerEdit(rowKey, timestamp), mvcc, null);
   }
 }

@@ -53,6 +53,7 @@ import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
+import org.apache.hadoop.hbase.wal.WALFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -133,6 +134,7 @@ public class TestCacheOnWriteInSchema {
   private final String testDescription;
   private HRegion region;
   private HStore store;
+  private WALFactory walFactory;
   private FileSystem fs;
 
   public TestCacheOnWriteInSchema(CacheOnWriteType cowType) {
@@ -177,17 +179,24 @@ public class TestCacheOnWriteInSchema {
     fs.delete(logdir, true);
 
     RegionInfo info = RegionInfoBuilder.newBuilder(htd.getTableName()).build();
+    walFactory = new WALFactory(conf, id);
 
-    region = HBaseTestingUtility.createRegionAndWAL(info, logdir, conf, htd,
-      BlockCacheFactory.createBlockCache(conf));
-    store = region.getStore(hcd.getName());
+    region = TEST_UTIL.createLocalHRegion(info, conf, htd, walFactory.getWAL(info));
+    region.setBlockCache(BlockCacheFactory.createBlockCache(conf));
+    store = new HStore(region, hcd, conf, false);
   }
 
   @After
   public void tearDown() throws IOException {
     IOException ex = null;
     try {
-      HBaseTestingUtility.closeRegionAndWAL(region);
+      region.close();
+    } catch (IOException e) {
+      LOG.warn("Caught Exception", e);
+      ex = e;
+    }
+    try {
+      walFactory.close();
     } catch (IOException e) {
       LOG.warn("Caught Exception", e);
       ex = e;

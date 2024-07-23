@@ -448,24 +448,32 @@ public class TestHRegion {
 
   /**
    * A test case of HBASE-21041
+   * @throws Exception Exception
    */
   @Test
   public void testFlushAndMemstoreSizeCounting() throws Exception {
     byte[] family = Bytes.toBytes("family");
     this.region = initHRegion(tableName, method, CONF, family);
-    for (byte[] row : HBaseTestingUtility.ROWS) {
-      Put put = new Put(row);
-      put.addColumn(family, family, row);
-      region.put(put);
+    final WALFactory wals = new WALFactory(CONF, method);
+    try {
+      for (byte[] row : HBaseTestingUtility.ROWS) {
+        Put put = new Put(row);
+        put.addColumn(family, family, row);
+        region.put(put);
+      }
+      region.flush(true);
+      // After flush, data size should be zero
+      assertEquals(0, region.getMemStoreDataSize());
+      // After flush, a new active mutable segment is created, so the heap size
+      // should equal to MutableSegment.DEEP_OVERHEAD
+      assertEquals(MutableSegment.DEEP_OVERHEAD, region.getMemStoreHeapSize());
+      // After flush, offheap should be zero
+      assertEquals(0, region.getMemStoreOffHeapSize());
+    } finally {
+      HBaseTestingUtility.closeRegionAndWAL(this.region);
+      this.region = null;
+      wals.close();
     }
-    region.flush(true);
-    // After flush, data size should be zero
-    assertEquals(0, region.getMemStoreDataSize());
-    // After flush, a new active mutable segment is created, so the heap size
-    // should equal to MutableSegment.DEEP_OVERHEAD
-    assertEquals(MutableSegment.DEEP_OVERHEAD, region.getMemStoreHeapSize());
-    // After flush, offheap should be zero
-    assertEquals(0, region.getMemStoreOffHeapSize());
   }
 
   /**
@@ -1283,12 +1291,6 @@ public class TestHRegion {
     // throwing a DroppedSnapshotException to force an abort. Just clean up the mess.
     region.close(true);
     wal.close();
-    // release the snapshot and active segment, so netty will not report memory leak
-    for (HStore store : region.getStores()) {
-      AbstractMemStore memstore = (AbstractMemStore) store.memstore;
-      memstore.doClearSnapShot();
-      memstore.close();
-    }
 
     // 2. Test case where START_FLUSH succeeds but COMMIT_FLUSH will throw exception
     wal.flushActions = new FlushAction[] { FlushAction.COMMIT_FLUSH };
@@ -1303,18 +1305,15 @@ public class TestHRegion {
     // DroppedSnapshotException. Below COMMIT_FLUSH will cause flush to abort
     wal.flushActions = new FlushAction[] { FlushAction.COMMIT_FLUSH, FlushAction.ABORT_FLUSH };
 
-    // we expect this exception, since we were able to write the snapshot, but failed to
-    // write the flush marker to WAL
-    assertThrows(DroppedSnapshotException.class, () -> region.flush(true));
-
-    region.close(true);
-    // release the snapshot and active segment, so netty will not report memory leak
-    for (HStore store : region.getStores()) {
-      AbstractMemStore memstore = (AbstractMemStore) store.memstore;
-      memstore.doClearSnapShot();
-      memstore.close();
+    try {
+      region.flush(true);
+      fail("This should have thrown exception");
+    } catch (DroppedSnapshotException expected) {
+      // we expect this exception, since we were able to write the snapshot, but failed to
+      // write the flush marker to WAL
+    } catch (IOException unexpected) {
+      throw unexpected;
     }
-    region = null;
   }
 
   @Test
@@ -3741,14 +3740,14 @@ public class TestHRegion {
     byte[][] families = { fam1, fam2 };
 
     // Setting up region
-    region = initHRegion(tableName, method, CONF, families);
-    region.closed.set(true);
     try {
-      assertThrows(NotServingRegionException.class, () -> region.getScanner(null));
-    } finally {
-      // so we can close the region in tearDown
-      region.closed.set(false);
+      this.region = initHRegion(tableName, method, CONF, families);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail("Got IOException during initHRegion, " + e.getMessage());
     }
+    region.closed.set(true);
+    assertThrows(NotServingRegionException.class, () -> region.getScanner(null));
   }
 
   @Test
@@ -4549,14 +4548,14 @@ public class TestHRegion {
   /**
    * So can be overridden in subclasses.
    */
-  protected int getNumQualifiersForTestWritesWhileScanning() {
+  int getNumQualifiersForTestWritesWhileScanning() {
     return 100;
   }
 
   /**
    * So can be overridden in subclasses.
    */
-  protected int getTestCountForTestWritesWhileScanning() {
+  int getTestCountForTestWritesWhileScanning() {
     return 100;
   }
 
@@ -5851,12 +5850,12 @@ public class TestHRegion {
    * @return A region on which you must call {@link HBaseTestingUtility#closeRegionAndWAL(HRegion)}
    *         when done.
    */
-  private HRegion initHRegion(TableName tableName, String callingMethod, Configuration conf,
+  protected HRegion initHRegion(TableName tableName, String callingMethod, Configuration conf,
     boolean isReadOnly, byte[]... families) throws IOException {
     return initHRegion(tableName, null, null, callingMethod, conf, isReadOnly, families);
   }
 
-  private HRegion initHRegion(TableName tableName, byte[] startKey, byte[] stopKey,
+  protected HRegion initHRegion(TableName tableName, byte[] startKey, byte[] stopKey,
     String callingMethod, Configuration conf, boolean isReadOnly, byte[]... families)
     throws IOException {
     Path logDir = TEST_UTIL.getDataTestDirOnTestFS(callingMethod + ".log");
@@ -5870,7 +5869,7 @@ public class TestHRegion {
    * @return A region on which you must call {@link HBaseTestingUtility#closeRegionAndWAL(HRegion)}
    *         when done.
    */
-  protected HRegion initHRegion(TableName tableName, byte[] startKey, byte[] stopKey,
+  public HRegion initHRegion(TableName tableName, byte[] startKey, byte[] stopKey,
     Configuration conf, boolean isReadOnly, Durability durability, WAL wal, byte[]... families)
     throws IOException {
     ChunkCreator.initialize(MemStoreLAB.CHUNK_SIZE_DEFAULT, false, 0, 0, 0, null,
@@ -6728,12 +6727,14 @@ public class TestHRegion {
     WAL wal = mockWAL();
     when(rss.getWAL(any(RegionInfo.class))).thenReturn(wal);
 
-    // create the region
-    region = HBaseTestingUtility.createRegionAndWAL(hri, rootDir, CONF, htd);
-    HBaseTestingUtility.closeRegionAndWAL(region);
-    region = null;
-    // open the region first and then close it
-    HRegion.openHRegion(hri, htd, rss.getWAL(hri), TEST_UTIL.getConfiguration(), rss, null).close();
+    // create and then open a region first so that it can be closed later
+    region =
+      HRegion.createHRegion(hri, rootDir, TEST_UTIL.getConfiguration(), htd, rss.getWAL(hri));
+    region =
+      HRegion.openHRegion(hri, htd, rss.getWAL(hri), TEST_UTIL.getConfiguration(), rss, null);
+
+    // close the region
+    region.close(false);
 
     // 2 times, one for region open, the other close region
     verify(wal, times(2)).appendMarker(any(RegionInfo.class), (WALKeyImpl) any(WALKeyImpl.class),
@@ -7197,7 +7198,7 @@ public class TestHRegion {
       qual2.length));
   }
 
-  private HRegion initHRegion(TableName tableName, String callingMethod, byte[]... families)
+  HRegion initHRegion(TableName tableName, String callingMethod, byte[]... families)
     throws IOException {
     return initHRegion(tableName, callingMethod, HBaseConfiguration.create(), families);
   }
@@ -7675,7 +7676,12 @@ public class TestHRegion {
 
     holder.start();
     latch.await();
-    assertThrows(IOException.class, () -> region.close());
+    try {
+      region.close();
+    } catch (IOException e) {
+      LOG.info("Caught expected exception", e);
+    }
+    region = null;
     holder.join();
 
     // Verify the region tried to abort the server

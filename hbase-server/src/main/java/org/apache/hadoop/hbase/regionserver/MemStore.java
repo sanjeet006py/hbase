@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import org.apache.hadoop.hbase.Cell;
@@ -32,7 +31,7 @@ import org.apache.yetus.audience.InterfaceAudience;
  * </p>
  */
 @InterfaceAudience.Private
-public interface MemStore extends Closeable {
+public interface MemStore {
 
   /**
    * Creates a snapshot of the current memstore. Snapshot must be cleared by call to
@@ -132,15 +131,4 @@ public interface MemStore extends Closeable {
   default void stopReplayingFromWAL() {
     return;
   }
-
-  /**
-   * Close the memstore.
-   * <p>
-   * Usually this should only be called when there is nothing in the memstore, unless we are going
-   * to abort ourselves.
-   * <p>
-   * For normal cases, this method is only used to fix the reference counting, see HBASE-27941.
-   */
-  @Override
-  void close();
 }

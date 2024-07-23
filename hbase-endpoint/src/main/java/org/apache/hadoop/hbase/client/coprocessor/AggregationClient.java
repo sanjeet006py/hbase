@@ -20,10 +20,6 @@ package org.apache.hadoop.hbase.client.coprocessor;
 import static org.apache.hadoop.hbase.client.coprocessor.AggregationHelper.getParsedGenericInstance;
 import static org.apache.hadoop.hbase.client.coprocessor.AggregationHelper.validateArgAndGetPB;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,14 +42,20 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.coprocessor.ColumnInterpreter;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
-import org.apache.hadoop.hbase.protobuf.generated.AggregateProtos.AggregateRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AggregateProtos.AggregateResponse;
-import org.apache.hadoop.hbase.protobuf.generated.AggregateProtos.AggregateService;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AggregateProtos.AggregateRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AggregateProtos.AggregateResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AggregateProtos.AggregateService;
 
 /**
  * This client class is for invoking the aggregate functions deployed on the Region Server side via

@@ -24,41 +24,39 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.BalanceRequest;
 import org.apache.hadoop.hbase.client.BalanceResponse;
 import org.apache.hadoop.hbase.net.Address;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
-import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.BalanceRSGroupRequest;
-import org.apache.hadoop.hbase.protobuf.generated.RSGroupAdminProtos.BalanceRSGroupResponse;
-import org.apache.hadoop.hbase.protobuf.generated.RSGroupProtos;
-import org.apache.hadoop.hbase.protobuf.generated.TableProtos;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupAdminProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupProtos;
 
 @InterfaceAudience.Private
 final class RSGroupProtobufUtil {
   private RSGroupProtobufUtil() {
   }
 
-  static void populateBalanceRSGroupResponse(BalanceRSGroupResponse.Builder responseBuilder,
-    BalanceResponse response) {
+  static void populateBalanceRSGroupResponse(
+    RSGroupAdminProtos.BalanceRSGroupResponse.Builder responseBuilder, BalanceResponse response) {
     responseBuilder.setBalanceRan(response.isBalancerRan())
       .setMovesCalculated(response.getMovesCalculated())
       .setMovesExecuted(response.getMovesExecuted());
   }
 
-  static BalanceResponse toBalanceResponse(BalanceRSGroupResponse response) {
+  static BalanceResponse toBalanceResponse(RSGroupAdminProtos.BalanceRSGroupResponse response) {
     return BalanceResponse.newBuilder().setBalancerRan(response.getBalanceRan())
       .setMovesExecuted(response.hasMovesExecuted() ? response.getMovesExecuted() : 0)
       .setMovesCalculated(response.hasMovesCalculated() ? response.getMovesCalculated() : 0)
       .build();
   }
 
-  static BalanceRSGroupRequest createBalanceRSGroupRequest(String groupName,
+  static RSGroupAdminProtos.BalanceRSGroupRequest createBalanceRSGroupRequest(String groupName,
     BalanceRequest request) {
-    return BalanceRSGroupRequest.newBuilder().setRSGroupName(groupName)
+    return RSGroupAdminProtos.BalanceRSGroupRequest.newBuilder().setRSGroupName(groupName)
       .setDryRun(request.isDryRun()).setIgnoreRit(request.isIgnoreRegionsInTransition()).build();
   }
 
-  static BalanceRequest toBalanceRequest(BalanceRSGroupRequest request) {
+  static BalanceRequest toBalanceRequest(RSGroupAdminProtos.BalanceRSGroupRequest request) {
     return BalanceRequest.newBuilder().setDryRun(request.hasDryRun() && request.getDryRun())
       .setIgnoreRegionsInTransition(request.hasIgnoreRit() && request.getIgnoreRit()).build();
   }
@@ -68,7 +66,7 @@ final class RSGroupProtobufUtil {
     for (HBaseProtos.ServerName el : proto.getServersList()) {
       rsGroupInfo.addServer(Address.fromParts(el.getHostName(), el.getPort()));
     }
-    for (TableProtos.TableName pTableName : proto.getTablesList()) {
+    for (HBaseProtos.TableName pTableName : proto.getTablesList()) {
       rsGroupInfo.addTable(ProtobufUtil.toTableName(pTableName));
     }
     proto.getConfigurationList()
@@ -77,7 +75,7 @@ final class RSGroupProtobufUtil {
   }
 
   static RSGroupProtos.RSGroupInfo toProtoGroupInfo(RSGroupInfo pojo) {
-    List<TableProtos.TableName> tables = new ArrayList<>(pojo.getTables().size());
+    List<HBaseProtos.TableName> tables = new ArrayList<>(pojo.getTables().size());
     for (TableName arg : pojo.getTables()) {
       tables.add(ProtobufUtil.toProtoTableName(arg));
     }
@@ -87,10 +85,10 @@ final class RSGroupProtobufUtil {
         .setPort(el.getPort()).build());
     }
     List<
-      NameStringPair> configuration =
+      HBaseProtos.NameStringPair> configuration =
         pojo
-          .getConfiguration().entrySet().stream().map(entry -> NameStringPair.newBuilder()
-            .setName(entry.getKey()).setValue(entry.getValue()).build())
+          .getConfiguration().entrySet().stream().map(entry -> HBaseProtos.NameStringPair
+            .newBuilder().setName(entry.getKey()).setValue(entry.getValue()).build())
           .collect(Collectors.toList());
     return RSGroupProtos.RSGroupInfo.newBuilder().setName(pojo.getName()).addAllServers(hostports)
       .addAllTables(tables).addAllConfiguration(configuration).build();

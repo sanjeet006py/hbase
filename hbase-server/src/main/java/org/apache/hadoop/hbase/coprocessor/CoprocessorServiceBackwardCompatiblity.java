@@ -17,9 +17,10 @@
  */
 package org.apache.hadoop.hbase.coprocessor;
 
-import com.google.protobuf.Service;
 import java.util.Collections;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 
 /**
  * Classes to help maintain backward compatibility with now deprecated {@link CoprocessorService}

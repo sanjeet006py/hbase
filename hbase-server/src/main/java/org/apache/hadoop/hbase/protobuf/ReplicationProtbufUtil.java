@@ -34,8 +34,11 @@ import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos;
@@ -61,8 +64,8 @@ public class ReplicationProtbufUtil {
     controller.setCallTimeout(timeout);
     try {
       admin.replicateWALEntry(controller, p.getFirst());
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
-      throw ProtobufUtil.getServiceException(e);
+    } catch (ServiceException e) {
+      throw ProtobufUtil.getRemoteException(e);
     }
   }
 

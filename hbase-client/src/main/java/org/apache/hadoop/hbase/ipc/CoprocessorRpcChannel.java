@@ -17,14 +17,16 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.RpcChannel;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 
 /**
  * Base interface which provides clients with an RPC connection to call coprocessor endpoint
- * {@link com.google.protobuf.Service}s. Note that clients should not use this class directly,
- * except through {@link org.apache.hadoop.hbase.client.Table#coprocessorService(byte[])}.
+ * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service}s. Note that clients should not
+ * use this class directly, except through
+ * {@link org.apache.hadoop.hbase.client.Table#coprocessorService(byte[])}.
  */
 @InterfaceAudience.Public
 public interface CoprocessorRpcChannel extends RpcChannel, BlockingRpcChannel {

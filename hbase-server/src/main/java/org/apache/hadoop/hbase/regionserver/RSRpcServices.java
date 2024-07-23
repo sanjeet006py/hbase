@@ -838,7 +838,7 @@ public class RSRpcServices
           }
         } else if (action.hasServiceCall()) {
           hasResultOrException = true;
-          com.google.protobuf.Message result = execServiceOnRegion(region, action.getServiceCall());
+          Message result = execServiceOnRegion(region, action.getServiceCall());
           ClientProtos.CoprocessorServiceResult.Builder serviceResultBuilder =
             ClientProtos.CoprocessorServiceResult.newBuilder();
           resultOrExceptionBuilder.setServiceResult(serviceResultBuilder
@@ -2509,7 +2509,7 @@ public class RSRpcServices
       checkOpen();
       requestCount.increment();
       HRegion region = getRegion(request.getRegion());
-      com.google.protobuf.Message result = execServiceOnRegion(region, request.getCall());
+      Message result = execServiceOnRegion(region, request.getCall());
       CoprocessorServiceResponse.Builder builder = CoprocessorServiceResponse.newBuilder();
       builder.setRegion(RequestConverter.buildRegionSpecifier(RegionSpecifierType.REGION_NAME,
         region.getRegionInfo().getRegionName()));
@@ -2531,7 +2531,7 @@ public class RSRpcServices
     return new Path(filePaths.get(0)).getFileSystem(regionServer.getConfiguration());
   }
 
-  private com.google.protobuf.Message execServiceOnRegion(HRegion region,
+  private Message execServiceOnRegion(HRegion region,
     final ClientProtos.CoprocessorServiceCall serviceCall) throws IOException {
     // ignore the passed in controller (from the serialized call)
     ServerRpcController execController = new ServerRpcController();

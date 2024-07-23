@@ -25,6 +25,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.filter.Filter;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
+
 /**
  * Can be overridden in UT if you only want to implement part of the methods in {@link AsyncTable}.
  */
@@ -162,14 +164,14 @@ public class DummyAsyncTable<C extends ScanResultConsumerBase> implements AsyncT
 
   @Override
   public <S, R> CompletableFuture<R> coprocessorService(
-    Function<com.google.protobuf.RpcChannel, S> stubMaker, ServiceCaller<S, R> callable,
+    Function<RpcChannel, S> stubMaker, ServiceCaller<S, R> callable,
     byte[] row) {
     return null;
   }
 
   @Override
   public <S, R> CoprocessorServiceBuilder<S, R> coprocessorService(
-    Function<com.google.protobuf.RpcChannel, S> stubMaker, ServiceCaller<S, R> callable,
+    Function<RpcChannel, S> stubMaker, ServiceCaller<S, R> callable,
     CoprocessorCallback<R> callback) {
     return null;
   }

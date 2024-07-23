@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcController;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import java.io.IOException;
@@ -30,14 +27,19 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CoprocessorServiceRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CoprocessorServiceResponse;
 
 /**
  * Provides clients with an RPC connection to call Coprocessor Endpoint
- * {@link com.google.protobuf.Service}s against a given table region. An instance of this class may
- * be obtained by calling {@link org.apache.hadoop.hbase.client.Table#coprocessorService(byte[])},
- * but should normally only be used in creating a new {@link com.google.protobuf.Service} stub to
+ * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service}s against a given table region. An
+ * instance of this class may be obtained by calling
+ * {@link org.apache.hadoop.hbase.client.Table#coprocessorService(byte[])}, but should normally only
+ * be used in creating a new {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} stub to
  * call the endpoint methods.
  * @see org.apache.hadoop.hbase.client.Table#coprocessorService(byte[])
  */

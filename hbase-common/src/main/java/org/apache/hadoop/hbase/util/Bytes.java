@@ -21,7 +21,6 @@ import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.c
 import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkPositionIndex;
 
-import com.google.protobuf.ByteString;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -50,6 +49,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 import org.apache.hbase.thirdparty.org.apache.commons.collections4.CollectionUtils;
 
 /**

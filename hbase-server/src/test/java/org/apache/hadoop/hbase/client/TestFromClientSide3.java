@@ -54,7 +54,6 @@ import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.RegionObserver;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.ServerRpcController;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.MiniBatchOperationInProgress;
@@ -79,6 +78,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MultiRowMutationProtos;
 
 @Category({ LargeTests.class, ClientTests.class })
 public class TestFromClientSide3 {
@@ -936,12 +937,10 @@ public class TestFromClientSide3 {
         try (Table table = con.getTable(tableName)) {
           MultiRowMutationProtos.MutateRowsRequest request =
             MultiRowMutationProtos.MutateRowsRequest.newBuilder()
-              .addMutationRequest(org.apache.hadoop.hbase.protobuf.ProtobufUtil.toMutation(
-                org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType.PUT,
-                put1))
-              .addMutationRequest(org.apache.hadoop.hbase.protobuf.ProtobufUtil.toMutation(
-                org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType.PUT,
-                put2))
+              .addMutationRequest(
+                ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.PUT, put1))
+              .addMutationRequest(
+                ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.PUT, put2))
               .build();
           table.coprocessorService(MultiRowMutationProtos.MultiRowMutationService.class, ROW, ROW,
             (MultiRowMutationProtos.MultiRowMutationService exe) -> {

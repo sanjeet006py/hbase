@@ -58,30 +58,16 @@ public final class Log4jUtils {
     }
   }
 
-  private static void invoke(Method method, Object... args) throws AssertionError {
+  public static void setLogLevel(String loggerName, String levelName) {
+    Method method = getMethod("setLogLevel", String.class, String.class);
     try {
-      method.invoke(null, args);
+      method.invoke(null, loggerName, levelName);
     } catch (IllegalAccessException e) {
       throw new AssertionError("should not happen", e);
     } catch (InvocationTargetException e) {
       throwUnchecked(e.getCause());
       throw new AssertionError("should not happen", e.getCause());
     }
-  }
-
-  public static void setAllLevels(String loggerName, String levelName) {
-    Method method = getMethod("setAllLevels", String.class, String.class);
-    invoke(method, loggerName, levelName);
-  }
-
-  public static void setLogLevel(String loggerName, String levelName) {
-    Method method = getMethod("setLogLevel", String.class, String.class);
-    invoke(method, loggerName, levelName);
-  }
-
-  public static void setRootLevel(String levelName) {
-    Method method = getMethod("setRootLevel", String.class);
-    invoke(method, levelName);
   }
 
   public static String getEffectiveLevel(String loggerName) {

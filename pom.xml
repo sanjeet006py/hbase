@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <!--
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -30,16 +30,16 @@
 -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>23</version>
+     <groupId>com.salesforce.hbase</groupId>
+     <artifactId>bigdata-parent-pom</artifactId>
+     <version>3.3.2-1.8.115</version>
     <relativePath/>
     <!-- no parent resolution -->
   </parent>
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
-  <version>${revision}</version>
   <packaging>pom</packaging>
+  <version>2.5.10-sfdc-1.0.0-SNAPSHOT</version>
   <name>Apache HBase</name>
   <description>Apache HBase is the Hadoop database. Use it when you need
     random, realtime read/write access to your Big Data.
@@ -477,7 +477,6 @@
     <module>hbase-thrift</module>
     <module>hbase-shell</module>
     <module>hbase-protocol-shaded</module>
-    <module>hbase-protocol</module>
     <module>hbase-client</module>
     <module>hbase-hadoop-compat</module>
     <module>hbase-common</module>
@@ -510,18 +509,7 @@
     <system>JIRA</system>
     <url>https://issues.apache.org/jira/browse/HBASE</url>
   </issueManagement>
-  <distributionManagement>
-    <site>
-      <id>hbase.apache.org</id>
-      <name>HBase Website at hbase.apache.org</name>
-      <!-- On why this is the tmp dir and not hbase.apache.org, see
-        https://issues.apache.org/jira/browse/HBASE-7593?focusedCommentId=13555866&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13555866
-       -->
-      <url>file:///tmp</url>
-    </site>
-  </distributionManagement>
   <properties>
-    <revision>2.5.10</revision>
     <!-- override on command line to have generated LICENSE files include
          diagnostic info for verifying notice requirements -->
     <license.debug.print.included>false</license.debug.print.included>
@@ -545,27 +533,12 @@
     <maven.min.version>3.5.0</maven.min.version>
     <java.min.version>${compileSource}</java.min.version>
     <!-- Dependencies -->
-    <hadoop-two.version>2.10.2</hadoop-two.version>
-    <hadoop-three.version>3.2.4</hadoop-three.version>
     <!-- These must be defined here for downstream build tools that don't look at profiles.
          They ought to match the values found in our default hadoop profile, which is
          currently "hadoop-2.0". See HBASE-15925 for more info. -->
     <hadoop.version>${hadoop-two.version}</hadoop.version>
-    <hadoop.guava.version>11.0.2</hadoop.guava.version>
     <compat.module>hbase-hadoop2-compat</compat.module>
     <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
-    <!--
-      These property is for transitive netty dependencies from thirdparty dependencies, like
-      hadoop and zookeeper. HBase netty comes in via hbase-thirdparty hbase-shaded-netty
-      In the old time, netty-all includes all the classes but maven does not know it so it is
-      possible that we have netty-all and netty-handler both on the classpath but they have
-      different version and cause conflicts. Newer version of netty-all solved the this problem
-      by depending all other netty modules, but we'd better still specify the version by our own
-      in the dependencyManagement section as it could still lead to different versions of netty
-      modules and cause trouble if we only rely on transitive dependencies.
-    -->
-    <netty3.version>3.10.6.Final</netty3.version>
-    <netty4.version>4.1.100.Final</netty4.version>
     <!-- end HBASE-15925 default hadoop compatibility values -->
     <audience-annotations.version>0.13.0</audience-annotations.version>
     <!--
@@ -573,56 +546,44 @@
       When building with jdk11, we will use 0.14.1, please see the build-with-jdk11 profile.
     -->
     <javadoc.audience-annotations.version>0.13.0</javadoc.audience-annotations.version>
-    <avro.version>1.11.3</avro.version>
     <caffeine.version>2.8.1</caffeine.version>
     <commons-codec.version>1.15</commons-codec.version>
-    <commons-io.version>2.11.0</commons-io.version>
     <commons-lang3.version>3.9</commons-lang3.version>
     <commons-math.version>3.6.1</commons-math.version>
+    <disruptor.version>3.4.4</disruptor.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <disruptor.version>3.4.4</disruptor.version>
-    <httpclient.version>4.5.13</httpclient.version>
-    <httpcore.version>4.4.13</httpcore.version>
     <metrics-core.version>3.2.6</metrics-core.version>
-    <jackson.version>2.15.2</jackson.version>
-    <jackson.databind.version>2.15.2</jackson.databind.version>
     <jaxb-api.version>2.3.1</jaxb-api.version>
     <servlet.api.version>3.1.0</servlet.api.version>
     <wx.rs.api.version>2.1.1</wx.rs.api.version>
     <glassfish.jsp.version>2.3.2</glassfish.jsp.version>
     <glassfish.el.version>3.0.1-b08</glassfish.el.version>
-    <jruby.version>9.2.13.0</jruby.version>
-    <junit.version>4.13.2</junit.version>
+    <jruby.version>9.3.9.0</jruby.version>
+    <junit.version>4.13.1</junit.version>
     <hamcrest.version>1.3</hamcrest.version>
     <opentelemetry.version>1.15.0</opentelemetry.version>
     <opentelemetry-javaagent.version>1.15.0</opentelemetry-javaagent.version>
-    <log4j2.version>2.17.2</log4j2.version>
     <mockito-core.version>2.28.2</mockito-core.version>
-    <!--Internally we use a different version of protobuf. See hbase-protocol-shaded-->
-    <external.protobuf.groupid>com.google.protobuf</external.protobuf.groupid>
-    <external.protobuf.version>2.5.0</external.protobuf.version>
-    <external.protoc.version>${external.protobuf.version}</external.protoc.version>
-    <protobuf.plugin.version>0.6.1</protobuf.plugin.version>
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.14.1</thrift.version>
-    <zookeeper.version>3.8.4</zookeeper.version>
     <jline.version>2.11</jline.version>
-    <slf4j.version>1.7.33</slf4j.version>
     <clover.version>4.0.3</clover.version>
     <jamon-runtime.version>2.4.1</jamon-runtime.version>
     <jettison.version>1.5.4</jettison.version>
     <!--Make sure these joni/jcodings are compatible with the versions used by jruby-->
-    <joni.version>2.1.31</joni.version>
-    <jcodings.version>1.0.55</jcodings.version>
+    <joni.version>2.1.42</joni.version>
+    <jcodings.version>1.0.56</jcodings.version>
     <spy.version>2.12.2</spy.version>
     <bouncycastle.version>1.78</bouncycastle.version>
     <skyscreamer.version>1.5.1</skyscreamer.version>
-    <kerby.version>1.0.1</kerby.version>
+    <kerby.version>2.0.3</kerby.version>
     <commons-crypto.version>1.1.0</commons-crypto.version>
     <curator.version>4.2.0</curator.version>
     <!-- Plugin Dependencies -->
-    <build.helper.maven.version>3.0.0</build.helper.maven.version>
-    <buildnumber.maven.version>1.4</buildnumber.maven.version>
+    <build.helper.maven.version>3.3.0</build.helper.maven.version>
+    <buildnumber.maven.version>3.0.0</buildnumber.maven.version>
+    <dependency.check.maven.version>8.3.1</dependency.check.maven.version>
     <!--
       When updating checkstyle.version, please make the same change in `.idea/checkstyle-idea.xml`
     -->
@@ -631,15 +592,22 @@
     <error-prone.version>2.16</error-prone.version>
     <jamon.plugin.version>2.4.2</jamon.plugin.version>
     <lifecycle.mapping.version>1.0.0</lifecycle.mapping.version>
-    <maven.antrun.version>1.8</maven.antrun.version>
-    <maven.bundle.version>3.3.0</maven.bundle.version>
-    <maven.checkstyle.version>3.1.0</maven.checkstyle.version>
+    <maven.assembly.version>3.5.0</maven.assembly.version>
+    <maven.antrun.version>3.1.0</maven.antrun.version>
+    <maven.bundle.version>5.1.8</maven.bundle.version>
+    <maven.checkstyle.version>3.2.1</maven.checkstyle.version>
+    <maven.compiler.version>3.11.0</maven.compiler.version>
     <maven.eclipse.version>2.10</maven.eclipse.version>
+    <maven.exec.version>3.1.0</maven.exec.version>
     <maven.gpg.version>3.0.1</maven.gpg.version>
-    <maven.javadoc.version>3.4.0</maven.javadoc.version>
-    <maven.warbucks.version>1.1.0</maven.warbucks.version>
+    <maven.javadoc.version>3.5.0</maven.javadoc.version>
+    <maven.release.version>3.0.0</maven.release.version>
+    <maven.shade.version>3.5.1</maven.shade.version>
+    <maven.warbucks.version>1.1.2</maven.warbucks.version>
+    <maven.remote.resources.version>3.0.0</maven.remote.resources.version>
     <maven.project.info.report.version>3.1.2</maven.project.info.report.version>
     <os.maven.version>1.5.0.Final</os.maven.version>
+    <protobuf.plugin.version>0.6.1</protobuf.plugin.version>
     <findbugs-annotations.version>1.3.9-1</findbugs-annotations.version>
     <spotbugs.version>4.7.3</spotbugs.version>
     <spotbugs.maven.version>4.7.2.1</spotbugs.maven.version>
@@ -648,18 +616,19 @@
     <xml.maven.version>1.0.1</xml.maven.version>
     <spotless.version>2.27.2</spotless.version>
     <maven-site.version>3.12.0</maven-site.version>
+
+    <!--Version of protobuf that hbase uses internally (we shade our pb)
+         Must match what is out in hbase-thirdparty include.
+    -->
+    <!--- We define hbase.protobuf.version in the BPP -->
+    <internal.protobuf.version>${hbase.protobuf.version}</internal.protobuf.version>
+
     <!-- compression -->
     <aircompressor.version>0.27</aircompressor.version>
     <brotli4j.version>1.11.0</brotli4j.version>
     <lz4.version>1.8.0</lz4.version>
-    <snappy.version>1.1.10.4</snappy.version>
-    <xz.version>1.9</xz.version>
+    <snappy.version>1.1.10.5</snappy.version>
     <zstd-jni.version>1.5.5-2</zstd-jni.version>
-    <hbase-thirdparty.version>4.1.5</hbase-thirdparty.version>
-    <!-- Coverage properties -->
-    <jacoco.version>0.8.8</jacoco.version>
-    <jacocoArgLine/>
-    <sonar-maven-plugin.version>3.9.1.2184</sonar-maven-plugin.version>
     <!-- Intraproject jar naming properties -->
     <!-- TODO this is pretty ugly, but works for the moment.
       Modules are pretty heavy-weight things, so doing this work isn't too bad. -->
@@ -698,7 +667,7 @@
       Use -Dsurefire.Xmx=xxg to run tests with different JVM Xmx value.
       This value is managed separately for jdk11. See below.
     -->
-    <surefire.Xmx>2200m</surefire.Xmx>
+    <surefire.Xmx>4400m</surefire.Xmx>
     <surefire.Xms>1000m</surefire.Xms>
 
     <surefire.cygwinXmx>2200m</surefire.cygwinXmx>
@@ -719,17 +688,8 @@
       "-Djava.library.path=${hadoop.library.path};${java.library.path}"
       -Dorg.apache.hbase.thirdparty.io.netty.leakDetection.level=advanced
       -Dio.opentelemetry.context.enableStrictContext=true</hbase-surefire.cygwin-argLine>
-    <!--
-      Keep these jdk11/jdk17 options in sync with add_jdk11_jvm_flags() in bin/hbase, except the
-      below ones which are only used in test code
-      'java.base/jdk.internal.util.random' is required by the test code
-      'java.base/sun.security.x509' and 'java.base/sun.security.util' are required by
-      TestLdapHttpServer, see HBASE-28341
-      'java.base/java.net' is required by TestSecureIPC, see HBASE-28723
-    -->
     <hbase-surefire.jdk11.flags>-Dorg.apache.hbase.thirdparty.io.netty.tryReflectionSetAccessible=true
       --add-modules jdk.unsupported
-      --add-opens java.base/java.io=ALL-UNNAMED
       --add-opens java.base/java.nio=ALL-UNNAMED
       --add-opens java.base/sun.nio.ch=ALL-UNNAMED
       --add-opens java.base/java.lang=ALL-UNNAMED
@@ -738,18 +698,13 @@
       --add-opens java.base/java.util=ALL-UNNAMED
       --add-opens java.base/java.util.concurrent=ALL-UNNAMED
       --add-exports java.base/jdk.internal.misc=ALL-UNNAMED
-      --add-exports java.security.jgss/sun.security.krb5=ALL-UNNAMED
-      --add-exports java.base/sun.net.dns=ALL-UNNAMED
-      --add-exports java.base/sun.net.util=ALL-UNNAMED</hbase-surefire.jdk11.flags>
-    <hbase-surefire.jdk17.flags>--add-opens java.base/jdk.internal.util.random=ALL-UNNAMED
-      --add-opens java.base/sun.security.x509=ALL-UNNAMED
-      --add-opens java.base/sun.security.util=ALL-UNNAMED
-      --add-opens java.base/java.net=ALL-UNNAMED</hbase-surefire.jdk17.flags>
+      --add-exports java.security.jgss/sun.security.krb5=ALL-UNNAMED</hbase-surefire.jdk11.flags>
+    <hbase-surefire.jdk17.flags>--add-opens java.base/jdk.internal.util.random=ALL-UNNAMED</hbase-surefire.jdk17.flags>
     <!-- Surefire argLine defaults to Linux, cygwin argLine is used in the os.windows profile -->
-    <argLine>${hbase-surefire.argLine} @{jacocoArgLine}</argLine>
-    <extra.enforcer.version>1.5.1</extra.enforcer.version>
-    <enforcer.version>3.0.0</enforcer.version>
-    <restrict-imports.enforcer.version>0.14.0</restrict-imports.enforcer.version>
+    <argLine>${hbase-surefire.argLine}</argLine>
+    <extra.enforcer.version>1.6.2</extra.enforcer.version>
+    <enforcer.version>3.3.0</enforcer.version>
+    <restrict-imports.enforcer.version>1.3.0</restrict-imports.enforcer.version>
     <!-- Location of test resources -->
     <test.build.classes>${project.build.directory}/test-classes</test.build.classes>
     <test.tmp.dir>${project.build.directory}</test.tmp.dir>
@@ -809,11 +764,6 @@
       <dependency>
         <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-protocol-shaded</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hbase</groupId>
-        <artifactId>hbase-protocol</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -941,6 +891,13 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-testing-util</artifactId>
+        <version>${project.version}</version>
+	<type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-examples</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -1015,6 +972,18 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -1023,6 +992,24 @@
         <version>${project.version}</version>
         <type>test-jar</type>
         <scope>test</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>
@@ -1042,11 +1029,6 @@
       <dependency>
         <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-shaded-mapreduce</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hbase</groupId>
-        <artifactId>hbase-shaded-testing-util</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -1083,11 +1065,6 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>
-        <artifactId>hbase-compression-xz</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-compression-zstd</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -1099,8 +1076,8 @@
       </dependency>
       <!--
         Logging dependencies. In general, we use slf4j as the log facade in HBase, so all sub
-        modules should depend on slf4j-api at compile scope, and then depend on log4j-slf4j-impl
-        and log4j2 at test scope(and in hbase-assembly when shipping the binary) to redirect the
+        modules should depend on slf4j-api at compile scope, and then depend on slf4j-log4j12
+        and log4j at test scope(and in hbase-assembly when shipping the binary) to redirect the
         log message to log4j. Do not introduce logging dependencies other than slf4j-api at compile
         scope as it will mess up the logging framework for downstream users.
         Here we also depend on jcl-over-slf4j and jul-to-slf4j, as some of the libraries we depend
@@ -1112,7 +1089,21 @@
         <artifactId>jettison</artifactId>
         <version>${jettison.version}</version>
       </dependency>
-      <!-- Logging -->
+      <dependency>
+	<groupId>de.ruedigermoeller</groupId>
+	<artifactId>fst</artifactId>
+	<version>2.50</version>
+	<exclusions>
+          <exclusion>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.cedarsoftware</groupId>
+            <artifactId>json-io</artifactId>
+          </exclusion>
+	</exclusions>
+      </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -1129,24 +1120,14 @@
         <version>${slf4j.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-api</artifactId>
-        <version>${log4j2.version}</version>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-reload4j</artifactId>
+        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-core</artifactId>
-        <version>${log4j2.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-slf4j-impl</artifactId>
-        <version>${log4j2.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-1.2-api</artifactId>
-        <version>${log4j2.version}</version>
+        <groupId>ch.qos.reload4j</groupId>
+        <artifactId>reload4j</artifactId>
+        <version>${reload4j.version}</version>
       </dependency>
       <!-- Avro dependencies we mostly get transitively, manual version coallescing -->
       <dependency>
@@ -1154,6 +1135,8 @@
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
       </dependency>
+      <!--This is not used by hbase directly.  Used by thrift,
+          dropwizard and zk.-->
       <dependency>
         <groupId>com.github.ben-manes.caffeine</groupId>
         <artifactId>caffeine</artifactId>
@@ -1180,9 +1163,14 @@
         <version>${commons-codec.version}</version>
       </dependency>
       <dependency>
+        <groupId>commons-cli</groupId>
+        <artifactId>commons-cli</artifactId>
+        <version>${commons-cli.version}</version>
+      </dependency>
+      <dependency>
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
-        <version>${commons-io.version}</version>
+        <version>${commons.io.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -1220,6 +1208,10 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
           </exclusion>
+	  <exclusion>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+	  </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -1293,11 +1285,6 @@
         <groupId>javax.annotation</groupId>
         <artifactId>javax.annotation-api</artifactId>
         <version>1.2</version>
-      </dependency>
-      <dependency>
-        <groupId>com.google.protobuf</groupId>
-        <artifactId>protobuf-java</artifactId>
-        <version>${external.protobuf.version}</version>
       </dependency>
       <dependency>
         <!--This lib has JspC in it. Needed precompiling jsps in hbase-rest, etc.-->
@@ -1547,7 +1534,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>${netty4.version}</version>
+        <version>${netty.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -1573,16 +1560,13 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-remote-resources-plugin</artifactId>
+	  <version>${maven.remote.resources.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-release-plugin</artifactId>
+	  <version>${maven.release.version}</version>
           <configuration>
-            <!--You need this profile. It'll sign your artifacts.
-                I'm not sure if this config. actually works though.
-                I've been specifying -Papache-release on the command-line
-             -->
-            <releaseProfiles>apache-release</releaseProfiles>
             <!--This stops our running tests for each stage of maven release.
                 But it builds the test jar.  From SUREFIRE-172.
               -->
@@ -1594,6 +1578,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
+	  <version>${maven.compiler.version}</version>
           <configuration>
             <showWarnings>true</showWarnings>
             <showDeprecation>false</showDeprecation>
@@ -1608,6 +1593,11 @@
           <configuration>
             <source>${compileSource}</source>
           </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven.shade.version}</version>
         </plugin>
         <!-- Test oriented plugins -->
         <plugin>
@@ -1843,7 +1833,7 @@
           <artifactId>protobuf-maven-plugin</artifactId>
           <version>${protobuf.plugin.version}</version>
           <configuration>
-            <protocArtifact>${external.protobuf.groupid}:protoc:${external.protoc.version}:exe:${os.detected.classifier}</protocArtifact>
+            <protocArtifact>com.google.protobuf:protoc:2.5.0:exe:${os.detected.classifier}</protocArtifact>
             <protoSourceRoot>${basedir}/src/main/protobuf/</protoSourceRoot>
             <clearOutputDirectory>false</clearOutputDirectory>
             <checkStaleness>true</checkStaleness>
@@ -1925,37 +1915,24 @@
           <artifactId>maven-gpg-plugin</artifactId>
           <version>${maven.gpg.version}</version>
         </plugin>
+	<plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>${maven.exec.version}</version>
+        </plugin>
+	<plugin>
+          <groupId>org.owasp</groupId>
+          <artifactId>dependency-check-maven</artifactId>
+          <version>${dependency.check.maven.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.cyclonedx</groupId>
+          <artifactId>cyclonedx-maven-plugin</artifactId>
+          <version>2.7.6</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>flatten-maven-plugin</artifactId>
-        <version>1.3.0</version>
-        <configuration>
-          <embedBuildProfileDependencies>true</embedBuildProfileDependencies>
-          <updatePomFile>true</updatePomFile>
-          <flattenMode>oss</flattenMode>
-        </configuration>
-        <executions>
-          <!-- enable flattening -->
-          <execution>
-            <id>flatten</id>
-            <goals>
-              <goal>flatten</goal>
-            </goals>
-            <phase>process-resources</phase>
-          </execution>
-          <!-- ensure proper cleanup -->
-          <execution>
-            <id>flatten.clean</id>
-            <goals>
-              <goal>clean</goal>
-            </goals>
-            <phase>clean</phase>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -2040,22 +2017,6 @@
             </configuration>
           </execution>
           <execution>
-            <id>banned-jsr305</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <bannedDependencies>
-                  <excludes>
-                    <exclude>com.google.code.findbugs:jsr305</exclude>
-                  </excludes>
-                  <message>We don't allow the JSR305 jar from the Findbugs project, see HBASE-16321.</message>
-                </bannedDependencies>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
             <id>banned-commons-logging</id>
             <goals>
               <goal>enforce</goal>
@@ -2135,11 +2096,9 @@
                   <excludes>
                     <exclude>log4j:*</exclude>
                     <exclude>org.slf4j:slf4j-log4j12</exclude>
-                    <exclude>ch.qos.reload4j:*</exclude>
-                    <exclude>org.slf4j:slf4j-reload4j</exclude>
                     <exclude>ch.qos.logback:*</exclude>
                   </excludes>
-                  <message>We do not allow other logging frameworks as now we use log4j2</message>
+                  <message>We do not allow log4j1 or logback</message>
                 </bannedDependencies>
               </rules>
             </configuration>
@@ -2161,54 +2120,6 @@
             </configuration>
           </execution>
           <execution>
-            <id>banned-bouncycastle-jdk15on</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <bannedDependencies>
-                  <excludes>
-                    <exclude>org.bouncycastle:*-jdk15on</exclude>
-                  </excludes>
-                  <message>Use org.bouncycastle:*-jdk18on instead</message>
-                  <searchTransitive>true</searchTransitive>
-                </bannedDependencies>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
-            <id>check-aggregate-license</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <!-- must check after LICENSE is built at 'generate-resources' -->
-            <phase>process-resources</phase>
-            <configuration>
-              <rules>
-                <evaluateBeanshell>
-                  <condition>File license = new File("${license.aggregate.path}");
-
-                    // Beanshell does not support try-with-resources,
-                    // so we must close this scanner manually
-                    Scanner scanner = new Scanner(license);
-
-                    while (scanner.hasNextLine()) {
-                      if (scanner.nextLine().startsWith("ERROR:")) {
-                        scanner.close();
-                        return false;
-                      }
-                    }
-                    scanner.close();
-                    return true;</condition>
-                  <message>License errors detected, for more detail find ERROR in
-                    ${license.aggregate.path}</message>
-                </evaluateBeanshell>
-              </rules>
-              <skip>${skip.license.check}</skip>
-            </configuration>
-          </execution>
-          <execution>
             <id>banned-illegal-imports</id>
             <goals>
               <goal>enforce</goal>
@@ -2218,29 +2129,6 @@
               <rules>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
-                  <reason>Use SLF4j for logging</reason>
-                  <bannedImports>
-                    <bannedImport>org.apache.commons.logging.**</bannedImport>
-                    <bannedImport>org.apache.log4j.**</bannedImport>
-                    <bannedImport>org.apache.logging.log4j.**</bannedImport>
-                  </bannedImports>
-                  <exclusions>
-                    <!-- Exclude this one as it is a log4j2 appender implementation -->
-                    <exclusion>org.apache.hadoop.hbase.logging.HBaseTestAppender</exclusion>
-                  </exclusions>
-                </restrictImports>
-                <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
-                  <includeTestCode>false</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
-                  <reason>Do not use log4j2 directly in code, see Log4jUtils in hbase-logging for more details.</reason>
-                  <bannedImports>
-                    <bannedImport>org.apache.logging.log4j.**</bannedImport>
-                  </bannedImports>
-                </restrictImports>
-                <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
-                  <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded version in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>com.google.common.**</bannedImport>
@@ -2253,7 +2141,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Do not use shaded classes from other dependencies</reason>
                   <bannedImports>
                     <bannedImport>org.apache.curator.shaded.**</bannedImport>
@@ -2262,7 +2149,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded gson in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>org.codehaus.jackson.**</bannedImport>
@@ -2270,7 +2156,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use commons lang 3</reason>
                   <bannedImports>
                     <bannedImport>org.apache.commons.lang.**</bannedImport>
@@ -2278,7 +2163,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use yetus IA and IS annotations</reason>
                   <bannedImports>
                     <bannedImport>org.apache.hadoop.classificatio.**</bannedImport>
@@ -2286,7 +2170,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Do not use htrace</reason>
                   <bannedImports>
                     <bannedImport>org.htrace.**</bannedImport>
@@ -2295,7 +2178,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded jetty in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>org.eclipse.jetty.**</bannedImport>
@@ -2303,7 +2185,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded jersey in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>org.glassfish.jersey.**</bannedImport>
@@ -2311,7 +2192,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>You should never use this style of annotations(i.e, 'this is for test only')
                     in IA.Public or IA.LimitedPrivate classes. Use IA.Private to tell users this is
                     not for public use.
@@ -2322,7 +2202,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded javax.ws.rs in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>javax.ws.rs.**</bannedImport>
@@ -2330,7 +2209,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use shaded jackson-jaxrs-json-provider in hbase-thirdparty</reason>
                   <bannedImports>
                     <bannedImport>com.fasterxml.jackson.jaxrs.**</bannedImport>
@@ -2338,7 +2216,6 @@
                 </restrictImports>
                 <restrictImports implementation="de.skuzzle.enforcer.restrictimports.rule.RestrictImports">
                   <includeTestCode>true</includeTestCode>
-                  <commentLineBufferSize>512</commentLineBufferSize>
                   <reason>Use junit4 instead</reason>
                   <bannedImports>
                     <bannedImport>junit.framework.**</bannedImport>
@@ -2585,6 +2462,31 @@
           </formats>
         </configuration>
       </plugin>
+      <plugin>
+	<groupId>org.owasp</groupId>
+	<artifactId>dependency-check-maven</artifactId>
+	<configuration>
+	  <format>ALL</format>
+	  <skipProvidedScope>true</skipProvidedScope>
+	  <skipRuntimeScope>true</skipRuntimeScope>
+	  <skipSystemScope>true</skipSystemScope>
+	  <suppressionFiles>
+	    <suppressionsFile>owaspSuppressions.xml</suppressionsFile>
+	  </suppressionFiles>
+	</configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>makeBom</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
     <extensions>
       <extension>
@@ -2648,7 +2550,6 @@
               <destDir>devapidocs</destDir>
               <name>Developer API</name>
               <description>The full HBase API, including private and unstable APIs</description>
-              <doctitle>Apache HBase™ ${project.version} API</doctitle>
               <sourceFileExcludes>
                 <exclude>**/generated/*</exclude>
                 <exclude>**/protobuf/*</exclude>
@@ -2697,9 +2598,8 @@
             </reports>
             <configuration>
               <destDir>testdevapidocs</destDir>
-              <name>Test Developer API</name>
+              <name>Developer API</name>
               <description>The full HBase API test code, including private and unstable APIs</description>
-              <testDoctitle>Apache HBase™ ${project.version} Test API</testDoctitle>
               <sourceFileExcludes>
                 <exclude>**/generated/*</exclude>
                 <exclude>**/protobuf/*</exclude>
@@ -2759,7 +2659,6 @@
               <destDir>apidocs</destDir>
               <name>User API</name>
               <description>The HBase Application Programmer's API</description>
-              <doctitle>Apache HBase™ ${project.version} API</doctitle>
               <excludePackageNames>org.apache.hadoop.hbase.backup*:org.apache.hadoop.hbase.catalog:org.apache.hadoop.hbase.client.coprocessor:org.apache.hadoop.hbase.client.metrics:org.apache.hadoop.hbase.codec*:org.apache.hadoop.hbase.constraint:org.apache.hadoop.hbase.coprocessor.*:org.apache.hadoop.hbase.executor:org.apache.hadoop.hbase.fs:*.generated.*:org.apache.hadoop.hbase.io.hfile.*:org.apache.hadoop.hbase.mapreduce.hadoopbackport:org.apache.hadoop.hbase.mapreduce.replication:org.apache.hadoop.hbase.master.*:org.apache.hadoop.hbase.metrics*:org.apache.hadoop.hbase.migration:org.apache.hadoop.hbase.monitoring:org.apache.hadoop.hbase.p*:org.apache.hadoop.hbase.regionserver.compactions:org.apache.hadoop.hbase.regionserver.handler:org.apache.hadoop.hbase.regionserver.snapshot:org.apache.hadoop.hbase.replication.*:org.apache.hadoop.hbase.rest.filter:org.apache.hadoop.hbase.rest.model:org.apache.hadoop.hbase.rest.p*:org.apache.hadoop.hbase.security.*:org.apache.hadoop.hbase.thrift*:org.apache.hadoop.hbase.tmpl.*:org.apache.hadoop.hbase.tool:org.apache.hadoop.hbase.trace:org.apache.hadoop.hbase.util.byterange*:org.apache.hadoop.hbase.util.test:org.apache.hadoop.hbase.util.vint:org.apache.hadoop.metrics2*:org.apache.hadoop.hbase.io.compress*</excludePackageNames>
               <!-- switch on dependency-driven aggregation -->
               <includeDependencySources>false</includeDependencySources>
@@ -2815,9 +2714,8 @@
               </docletArtifact>
               <useStandardDocletOptions>true</useStandardDocletOptions>
               <destDir>testapidocs</destDir>
-              <name>Test User API</name>
-              <description>The HBase Application Programmer's API test code</description>
-              <testDoctitle>Apache HBase™ ${project.version} Test API</testDoctitle>
+              <name>User API</name>
+              <description>The HBase Application Programmer's API</description>
               <excludePackageNames>org.apache.hadoop.hbase.backup*:org.apache.hadoop.hbase.catalog:org.apache.hadoop.hbase.client.coprocessor:org.apache.hadoop.hbase.client.metrics:org.apache.hadoop.hbase.codec*:org.apache.hadoop.hbase.constraint:org.apache.hadoop.hbase.coprocessor.*:org.apache.hadoop.hbase.executor:org.apache.hadoop.hbase.fs:*.generated.*:org.apache.hadoop.hbase.io.hfile.*:org.apache.hadoop.hbase.mapreduce.hadoopbackport:org.apache.hadoop.hbase.mapreduce.replication:org.apache.hadoop.hbase.master.*:org.apache.hadoop.hbase.metrics*:org.apache.hadoop.hbase.migration:org.apache.hadoop.hbase.monitoring:org.apache.hadoop.hbase.p*:org.apache.hadoop.hbase.regionserver.compactions:org.apache.hadoop.hbase.regionserver.handler:org.apache.hadoop.hbase.regionserver.snapshot:org.apache.hadoop.hbase.replication.*:org.apache.hadoop.hbase.rest.filter:org.apache.hadoop.hbase.rest.model:org.apache.hadoop.hbase.rest.p*:org.apache.hadoop.hbase.security.*:org.apache.hadoop.hbase.thrift*:org.apache.hadoop.hbase.tmpl.*:org.apache.hadoop.hbase.tool:org.apache.hadoop.hbase.trace:org.apache.hadoop.hbase.util.byterange*:org.apache.hadoop.hbase.util.test:org.apache.hadoop.hbase.util.vint:org.apache.hadoop.metrics2*:org.apache.hadoop.hbase.io.compress*</excludePackageNames>
               <!-- switch on dependency-driven aggregation -->
               <includeDependencySources>false</includeDependencySources>
@@ -2873,31 +2771,6 @@
     </plugins>
   </reporting>
 
-  <!--
-  To publish, use the following settings.xml file ( placed in ~/.m2/settings.xml )
-
- <settings>
-  <servers>
-    <server>
-      <id>apache.releases.https</id>
-      <username>hbase_committer</username>
-      <password>********</password>
-    </server>
-
-    <server>
-      <id>apache.snapshots.https</id>
-      <username>hbase_committer</username>
-      <password>********</password>
-    </server>
-
-  </servers>
- </settings>
-
-  $ mvn deploy
-(or)
-  $ mvn -s /my/path/settings.xml deploy
-
-  -->
   <profiles>
     <profile>
       <id>rsgroup</id>
@@ -2966,48 +2839,7 @@
             </plugin>
           </plugins>
         </pluginManagement>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-enforcer-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>hadoop3-profile-required</id>
-                <goals>
-                  <goal>enforce</goal>
-                </goals>
-                <configuration>
-                  <rules>
-                    <requireProperty>
-                      <!--
-                        $ JAVA_HOME=... mvn -Dhadoop.profile=3.0 -PrunSmallTests help:active-profiles enforcer:display-info clean test
-                        enforcer plugin does not see active profiles on sub-modules, so enforce based
-                        on the presence of the activation property and value.
-                      -->
-                      <property>hadoop.profile</property>
-                      <regex>.*3\.0$</regex>
-                      <message>HBase with JDK11 requires Hadoop3. Activate the profile with `-Dhadoop.profile=3.0`.</message>
-                      <regexMessage>HBase with JDK11 requires Hadoop3. Activate the profile with `-Dhadoop.profile=3.0`.</regexMessage>
-                    </requireProperty>
-                  </rules>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
       </build>
-    </profile>
-    <profile>
-      <id>build-with-jdk17</id>
-      <activation>
-        <jdk>[17,)</jdk>
-      </activation>
-      <properties>
-        <argLine>${hbase-surefire.jdk11.flags}
-          ${hbase-surefire.jdk17.flags}
-          ${hbase-surefire.argLine}
-          @{jacocoArgLine}</argLine>
-      </properties>
     </profile>
     <!-- profile activated by the Jenkins patch testing job -->
     <profile>
@@ -3131,104 +2963,17 @@
         <argLine>${hbase-surefire.cygwin-argLine} @{jacocoArgLine}</argLine>
       </properties>
     </profile>
-    <!-- this profile should match the name of the release profile in the root asf pom -->
-    <profile>
-      <id>apache-release</id>
-      <build>
-        <plugins>
-          <!-- This should insert itself in place of the normal deploy plugin and then
-               handle either closing or dropping the staging repository for us depending
-               on if the build succeeds.
-            -->
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.8</version>
-            <extensions>true</extensions>
-            <configuration>
-              <nexusUrl>https://repository.apache.org/</nexusUrl>
-              <serverId>apache.releases.https</serverId>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <!-- this profile should be activated for release builds -->
-    <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.rat</groupId>
-            <artifactId>apache-rat-plugin</artifactId>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>check</goal>
-                </goals>
-                <phase>package</phase>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-enforcer-plugin</artifactId>
-            <version>${enforcer.version}</version>
-            <configuration>
-              <rules>
-                <enforceBytecodeVersion>
-                  <maxJdkVersion>${compileSource}</maxJdkVersion>
-                  <message>HBase has unsupported dependencies.
-  HBase requires that all dependencies be compiled with version ${compileSource} or earlier
-  of the JDK to properly build from source.  You appear to be using a newer dependency. You can use
-  either "mvn -version" or "mvn enforcer:display-info" to verify what version is active.
-  Non-release builds can temporarily build with a newer JDK version by setting the
-  'compileSource' property (eg. mvn -DcompileSource=1.8 clean package).</message>
-                  <ignoreClasses>
-                    <ignoreClass>module-info</ignoreClass>
-                  </ignoreClasses>
-                </enforceBytecodeVersion>
-              </rules>
-            </configuration>
-            <dependencies>
-              <dependency>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>extra-enforcer-rules</artifactId>
-                <version>${extra.enforcer.version}</version>
-              </dependency>
-            </dependencies>
-          </plugin>
-          <plugin>
-            <groupId>org.cyclonedx</groupId>
-            <artifactId>cyclonedx-maven-plugin</artifactId>
-            <version>2.7.10</version>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>makeBom</goal>
-                </goals>
-                <phase>package</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
     <!-- Dependency management profiles for submodules when building against specific hadoop branches.-->
     <!-- Submodules that need hadoop dependencies should declare
     profiles with activation properties matching the profile here.
     Generally, it should be sufficient to copy the first
     few lines of the profile you want to match.  -->
-    <!-- profile for building against Hadoop 2.0.x
-         This is the default.
-         -->
     <profile>
       <id>hadoop-2.0</id>
       <activation>
         <property>
-          <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
-          <!--h2-->
-          <name>!hadoop.profile</name>
+          <name>hadoop.profile</name>
+          <value>2.0</value>
         </property>
       </activation>
       <modules>
@@ -3238,9 +2983,6 @@
         <hadoop.version>${hadoop-two.version}</hadoop.version>
         <compat.module>hbase-hadoop2-compat</compat.module>
         <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
-        <!--This property is for hadoops netty. HBase netty
-             comes in via hbase-thirdparty hbase-shaded-netty-->
-        <netty.hadoop.version>3.10.6.Final</netty.hadoop.version>
       </properties>
       <dependencyManagement>
         <dependencies>
@@ -3260,6 +3002,10 @@
               <exclusion>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-xc</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>javax.servlet</groupId>
@@ -3321,6 +3067,10 @@
                 <artifactId>jersey-core</artifactId>
               </exclusion>
               <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>javax.servlet</groupId>
                 <artifactId>servlet-api</artifactId>
               </exclusion>
@@ -3356,6 +3106,10 @@
               <exclusion>
                 <groupId>com.sun.jersey</groupId>
                 <artifactId>jersey-core</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>javax.servlet</groupId>
@@ -3404,6 +3158,10 @@
               <exclusion>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-xc</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>javax.xml.bind</groupId>
@@ -3457,6 +3215,10 @@
                 <artifactId>servlet-api</artifactId>
               </exclusion>
               <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>stax</groupId>
                 <artifactId>stax-api</artifactId>
               </exclusion>
@@ -3508,6 +3270,10 @@
               <exclusion>
                 <groupId>javax.servlet</groupId>
                 <artifactId>servlet-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>stax</groupId>
@@ -3588,6 +3354,14 @@
             <version>${hadoop-two.version}</version>
             <exclusions>
               <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>apache-log4j-extras</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>com.sun.jersey</groupId>
                 <artifactId>jersey-core</artifactId>
               </exclusion>
@@ -3618,6 +3392,10 @@
               <exclusion>
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>junit</groupId>
@@ -3656,6 +3434,14 @@
             <type>test-jar</type>
             <scope>test</scope>
             <exclusions>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>apache-log4j-extras</artifactId>
+              </exclusion>
               <exclusion>
                 <groupId>javax.servlet.jsp</groupId>
                 <artifactId>jsp-api</artifactId>
@@ -3697,6 +3483,10 @@
                 <artifactId>jsr305</artifactId>
               </exclusion>
               <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
               </exclusion>
@@ -3729,6 +3519,10 @@
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop-two.version}</version>
             <exclusions>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+              </exclusion>
               <exclusion>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
@@ -3767,6 +3561,14 @@
               </exclusion>
               -->
               <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>apache-log4j-extras</artifactId>
+              </exclusion>
+              <exclusion>
                 <groupId>commons-httpclient</groupId>
                 <artifactId>commons-httpclient</artifactId>
               </exclusion>
@@ -3781,6 +3583,10 @@
               <exclusion>
                 <groupId>stax</groupId>
                 <artifactId>stax-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
               </exclusion>
               <exclusion>
                 <groupId>com.google.code.findbugs</groupId>
@@ -3832,7 +3638,7 @@
               </exclusion>
               <exclusion>
                 <groupId>bouncycastle</groupId>
-                <artifactId>bcprov-jdk15</artifactId>
+                <artifactId>bcprov-jdk18</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -3841,30 +3647,60 @@
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop-two.version}</version>
           </dependency>
-
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-distcp</artifactId>
             <version>${hadoop-two.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs-client</artifactId>
             <version>${hadoop-two.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${hadoop-two.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
         </dependencies>
       </dependencyManagement>
     </profile>
-    <!--
-      profile for building against Hadoop 3.0.0. Activate using:
-       mvn -Dhadoop.profile=3.0
-    -->
+
     <profile>
       <id>hadoop-3.0</id>
       <activation>
         <property>
-          <name>hadoop.profile</name>
-          <value>3.0</value>
+          <name>!hadoop.profile</name>
         </property>
       </activation>
       <modules>
@@ -3879,7 +3715,6 @@
         <assembly.file>src/main/assembly/hadoop-three-compat.xml</assembly.file>
         <!--This property is for hadoops netty. HBase netty
              comes in via hbase-thirdparty hbase-shaded-netty-->
-        <netty.hadoop.version>3.10.5.Final</netty.hadoop.version>
       </properties>
       <dependencyManagement>
         <dependencies>
@@ -3928,14 +3763,6 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
@@ -3971,14 +3798,6 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
@@ -3999,14 +3818,6 @@
               <exclusion>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -4047,14 +3858,6 @@
               <exclusion>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.fusesource.leveldbjni</groupId>
-                <artifactId>leveldbjni-all</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.openlabtesting.leveldbjni</groupId>
-                <artifactId>leveldbjni-all</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -4104,14 +3907,6 @@
                 <artifactId>log4j</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
-              <exclusion>
                 <groupId>org.fusesource.leveldbjni</groupId>
                 <artifactId>leveldbjni-all</artifactId>
               </exclusion>
@@ -4164,14 +3959,6 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
@@ -4196,12 +3983,12 @@
                 <artifactId>log4j</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
+                <groupId>org.apache.kerby</groupId>
+                <artifactId>*</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -4259,16 +4046,12 @@
                 <artifactId>log4j</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.bouncycastle</groupId>
-                <artifactId>bcprov-jdk15on</artifactId>
+                <groupId>org.apache.kerby</groupId>
+                <artifactId>*</artifactId>
               </exclusion>
             </exclusions>
           </dependency>
@@ -4337,14 +4120,6 @@
                 <artifactId>log4j</artifactId>
               </exclusion>
               <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
-              <exclusion>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>*</artifactId>
               </exclusion>
@@ -4360,21 +4135,37 @@
                 <groupId>javax.ws.rs</groupId>
                 <artifactId>jsr311-api</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>org.bouncycastle</groupId>
-                <artifactId>bcprov-jdk15on</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
             <version>${hadoop-three.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-annotations</artifactId>
             <version>${hadoop-three.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
           <!-- This was marked as test dep in earlier pom, but was scoped compile.
            Where do we actually need it? -->
@@ -4423,22 +4214,6 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-reload4j</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.bouncycastle</groupId>
-                <artifactId>bcprov-jdk15on</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.bouncycastle</groupId>
-                <artifactId>bcpkix-jdk15on</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
@@ -4459,22 +4234,52 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-reload4j</artifactId>
               </exclusion>
-              <exclusion>
-                <groupId>bouncycastle</groupId>
-                <artifactId>bcprov-jdk15</artifactId>
-              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-distcp</artifactId>
             <version>${hadoop-three.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
-
           <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs-client</artifactId>
             <version>${hadoop-three.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${hadoop-three.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
         </dependencies>
       </dependencyManagement>
@@ -5008,18 +4813,18 @@
         </pluginManagement>
       </build>
     </profile>
-    <profile>
-      <id>aarch64</id>
-      <activation>
-        <os>
-          <family>linux</family>
-          <arch>aarch64</arch>
-        </os>
-      </activation>
-      <properties>
-        <external.protobuf.groupid>org.openlabtesting.protobuf</external.protobuf.groupid>
-        <external.protoc.version>2.5.0.2</external.protoc.version>
-      </properties>
-    </profile>
   </profiles>
+<!-- Releasing to internal salesforce repositories -->
+  <distributionManagement>
+    <repository>
+      <id>nexus</id>
+      <name>Internal Releases</name>
+      <url>https://nexus-proxy.repo.local.sfdc.net/nexus/content/repositories/salesforce-hbase/</url>
+    </repository>
+    <snapshotRepository>
+      <id>nexus</id>
+      <name>Internal Releases</name>
+      <url>https://nexus-proxy.repo.local.sfdc.net/nexus/content/repositories/thirdparty-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>

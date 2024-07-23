@@ -105,7 +105,7 @@ public class ScannerCallable extends ClientServiceCallable<Result[]> {
    * @param scanMetrics          the ScanMetrics to used, if it is null, ScannerCallable won't
    *                             collect metrics
    * @param rpcControllerFactory factory to use when creating
-   *                             {@link com.google.protobuf.RpcController}
+   *                             {@link org.apache.hbase.thirdparty.com.google.protobuf.RpcController}
    */
   public ScannerCallable(ClusterConnection connection, TableName tableName, Scan scan,
     ScanMetrics scanMetrics, RpcControllerFactory rpcControllerFactory, int id) {

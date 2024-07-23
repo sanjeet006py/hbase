@@ -62,11 +62,6 @@ import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.ServerRpcController;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.RegionState.State;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationService;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
@@ -77,6 +72,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MultiRowMutationProtos;
 
 /**
  * <p>
@@ -1691,32 +1690,36 @@ public class MetaTableAccessor {
   static void multiMutate(final Table table, byte[] row, final List<Mutation> mutations)
     throws IOException {
     debugLogMutations(mutations);
-    Batch.Call<MultiRowMutationService, MutateRowsResponse> callable = instance -> {
-      MutateRowsRequest.Builder builder = MutateRowsRequest.newBuilder();
-      for (Mutation mutation : mutations) {
-        if (mutation instanceof Put) {
-          builder.addMutationRequest(
-            ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.PUT, mutation));
-        } else if (mutation instanceof Delete) {
-          builder.addMutationRequest(
-            ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.DELETE, mutation));
-        } else {
-          throw new DoNotRetryIOException(
-            "multi in MetaEditor doesn't support " + mutation.getClass().getName());
+    Batch.Call<MultiRowMutationProtos.MultiRowMutationService,
+      MultiRowMutationProtos.MutateRowsResponse> callable = instance -> {
+        MultiRowMutationProtos.MutateRowsRequest.Builder builder =
+          MultiRowMutationProtos.MutateRowsRequest.newBuilder();
+        for (Mutation mutation : mutations) {
+          if (mutation instanceof Put) {
+            builder.addMutationRequest(
+              ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.PUT, mutation));
+          } else if (mutation instanceof Delete) {
+            builder.addMutationRequest(
+              ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.DELETE, mutation));
+          } else {
+            throw new DoNotRetryIOException(
+              "multi in MetaEditor doesn't support " + mutation.getClass().getName());
+          }
         }
-      }
-      ServerRpcController controller = new ServerRpcController();
-      CoprocessorRpcUtils.BlockingRpcCallback<MutateRowsResponse> rpcCallback =
-        new CoprocessorRpcUtils.BlockingRpcCallback<>();
-      instance.mutateRows(controller, builder.build(), rpcCallback);
-      MutateRowsResponse resp = rpcCallback.get();
-      if (controller.failedOnException()) {
-        throw controller.getFailedOn();
-      }
-      return resp;
-    };
+        ServerRpcController controller = new ServerRpcController();
+        CoprocessorRpcUtils.BlockingRpcCallback<
+          MultiRowMutationProtos.MutateRowsResponse> rpcCallback =
+            new CoprocessorRpcUtils.BlockingRpcCallback<>();
+        instance.mutateRows(controller, builder.build(), rpcCallback);
+        MultiRowMutationProtos.MutateRowsResponse resp = rpcCallback.get();
+        if (controller.failedOnException()) {
+          throw controller.getFailedOn();
+        }
+        return resp;
+      };
     try {
-      table.coprocessorService(MultiRowMutationService.class, row, row, callable);
+      table.coprocessorService(MultiRowMutationProtos.MultiRowMutationService.class, row, row,
+        callable);
     } catch (Throwable e) {
       // Throw if an IOE else wrap in an IOE EVEN IF IT IS a RuntimeException (e.g.
       // a RejectedExecutionException because the hosting exception is shutting down.

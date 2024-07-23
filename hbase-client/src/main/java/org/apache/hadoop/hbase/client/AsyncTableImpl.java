@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase.client;
 
 import static java.util.stream.Collectors.toList;
 
-import com.google.protobuf.RpcChannel;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
@@ -36,6 +35,8 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 
 /**
  * Just a wrapper of {@link RawAsyncTableImpl}. The difference is that users need to provide a

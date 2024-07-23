@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.protobuf.RpcChannel;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +45,8 @@ import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 
 /**
  * Just a wrapper of {@link RawAsyncHBaseAdmin}. The difference is that users need to provide a

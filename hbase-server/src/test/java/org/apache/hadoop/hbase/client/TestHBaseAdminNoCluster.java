@@ -21,7 +21,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.google.protobuf.ServiceException;
 import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.hadoop.conf.Configuration;
@@ -52,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.BalanceRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.CreateTableRequest;
@@ -85,8 +85,7 @@ public class TestHBaseAdminNoCluster {
   @Ignore
   @Test
   public void testMasterMonitorCallableRetries()
-    throws MasterNotRunningException, ZooKeeperConnectionException, IOException,
-    org.apache.hbase.thirdparty.com.google.protobuf.ServiceException {
+    throws MasterNotRunningException, ZooKeeperConnectionException, IOException, ServiceException {
     Configuration configuration = HBaseConfiguration.create();
     // Set the pause and retry count way down.
     configuration.setLong(HConstants.HBASE_CLIENT_PAUSE, 1);

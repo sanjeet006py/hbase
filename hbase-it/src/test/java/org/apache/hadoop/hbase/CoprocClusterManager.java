@@ -26,13 +26,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hbase.client.AsyncAdmin;
 import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecService;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecService;
 
 /**
  * Overrides commands to make use of coprocessor where possible. Only supports actions taken against

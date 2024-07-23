@@ -23,10 +23,6 @@ package org.apache.hadoop.hbase.client;
 
 import static org.apache.hadoop.hbase.client.ConnectionUtils.checkHasFamilies;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.Service;
-import com.google.protobuf.ServiceException;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
@@ -73,6 +69,10 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
@@ -1135,8 +1135,7 @@ public class HTable implements Table {
         final RegionCoprocessorRpcChannel channel =
           new RegionCoprocessorRpcChannel(connection, tableName, r);
         Future<R> future = wrappedPool.submit(() -> {
-          T instance =
-            org.apache.hadoop.hbase.protobuf.ProtobufUtil.newServiceStub(service, channel);
+          T instance = ProtobufUtil.newServiceStub(service, channel);
           R result = callable.call(instance);
           byte[] region = channel.getLastRegion();
           if (callback != null) {
@@ -1319,8 +1318,7 @@ public class HTable implements Table {
           }
           try {
             Message.Builder builder = responsePrototype.newBuilderForType();
-            org.apache.hadoop.hbase.protobuf.ProtobufUtil.mergeFrom(builder,
-              serviceResult.getValue().getValue().toByteArray());
+            ProtobufUtil.mergeFrom(builder, serviceResult.getValue().getValue().toByteArray());
             callback.update(region, row, (R) builder.build());
           } catch (IOException e) {
             LOG.error("Unexpected response type from endpoint {}", methodDescriptor.getFullName(),

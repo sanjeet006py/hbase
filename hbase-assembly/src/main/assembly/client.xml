@@ -48,7 +48,7 @@
             <!-- Exclude J2EE libraries that get pulled in when building on JDK11 -->
               <exclude>com.sun.xml.ws:jaxws-ri</exclude>
             <!-- Exclude libraries that we put in their own dirs under lib/ -->
-              <exclude>org.jruby:jruby-complete</exclude>
+            <!-- SFDC change  <exclude>org.jruby:jruby-complete</exclude> -->
               <exclude>com.sun.jersey:*</exclude>
               <exclude>com.sun.jersey.contribs:*</exclude>
               <exclude>jline:jline</exclude>
@@ -62,7 +62,7 @@
               <exclude>org.apache.htrace:htrace-core</exclude>
               <exclude>org.apache.yetus:audience-annotations</exclude>
               <exclude>org.slf4j:*</exclude>
-              <exclude>org.apache.logging.log4j:*</exclude>
+              <exclude>ch.qos.reload4j:*</exclude>
               <exclude>io.opentelemetry.javaagent:*</exclude>
               <exclude>org.hamcrest:hamcrest-core</exclude>
               <exclude>org.mockito:mockito-core</exclude>
@@ -72,27 +72,6 @@
       </binaries>
     </moduleSet>
   </moduleSets>
-  <!-- Include the generated LICENSE and NOTICE files -->
-  <files>
-    <file>
-      <source>${project.build.directory}/maven-shared-archive-resources/META-INF/LICENSE</source>
-      <outputDirectory>.</outputDirectory>
-      <destName>LICENSE.txt</destName>
-      <lineEnding>unix</lineEnding>
-    </file>
-    <file>
-      <source>${project.build.directory}/NOTICE.aggregate</source>
-      <outputDirectory>.</outputDirectory>
-      <destName>NOTICE.txt</destName>
-      <lineEnding>unix</lineEnding>
-    </file>
-    <file>
-      <source>${basedir}/src/main/resources/META-INF/LEGAL</source>
-      <outputDirectory>.</outputDirectory>
-      <destName>LEGAL</destName>
-      <lineEnding>unix</lineEnding>
-    </file>
-  </files>
 
   <dependencySets>
     <dependencySet>
@@ -100,7 +79,7 @@
       <includes>
         <include>org.apache.hbase:hbase-shaded-client</include>
         <include>org.apache.hbase:hbase-shaded-mapreduce</include>
-        <include>org.apache.hbase:hbase-shaded-client-byo-hadoop</include>
+        <!-- SFDC change (PHOENIX-6053) : <include>org.apache.hbase:hbase-shaded-client-byo-hadoop</include> -->
       </includes>
     </dependencySet>
   <!-- Add jruby-complete to hbase_home/lib/ruby.
@@ -150,7 +129,7 @@
         <include>org.apache.htrace:htrace-core</include>
         <include>org.apache.yetus:audience-annotations</include>
         <include>org.slf4j:*</include>
-        <include>org.apache.logging.log4j:*</include>
+        <include>ch.qos.reload4j:*</include>
         <include>io.opentelemetry:*</include>
       </includes>
     </dependencySet>

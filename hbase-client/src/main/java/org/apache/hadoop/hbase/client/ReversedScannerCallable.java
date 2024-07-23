@@ -49,8 +49,9 @@ public class ReversedScannerCallable extends ScannerCallable {
    * @param scan        the scan to execute
    * @param scanMetrics the ScanMetrics to used, if it is null, ScannerCallable won't collect
    *                    metrics
-   * @param rpcFactory  to create an {@link com.google.protobuf.RpcController} to talk to the
-   *                    regionserver
+   * @param rpcFactory  to create an
+   *                    {@link org.apache.hbase.thirdparty.com.google.protobuf.RpcController} to
+   *                    talk to the regionserver
    * @param replicaId   the replica id
    */
   public ReversedScannerCallable(ClusterConnection connection, TableName tableName, Scan scan,

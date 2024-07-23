@@ -389,23 +389,17 @@ public final class FanOutOneBlockAsyncDFSOutputSaslHelper {
 
       static {
         Class<?> builderClass = DataTransferEncryptorMessageProto.Builder.class;
-
-        // Try the unrelocated ByteString
         Class<?> byteStringClass;
+
         try {
           // See if it can load the relocated ByteString, which comes from hadoop-thirdparty.
           byteStringClass = Class.forName("org.apache.hadoop.thirdparty.protobuf.ByteString");
           LOG.debug("Found relocated ByteString class from hadoop-thirdparty."
             + " Assuming this is Hadoop 3.3.0+.");
         } catch (ClassNotFoundException e) {
-          LOG.debug("Did not find relocated ByteString class from hadoop-thirdparty."
-            + " Assuming this is below Hadoop 3.3.0", e);
-          try {
-            byteStringClass = Class.forName("com.google.protobuf.ByteString");
-            LOG.debug("com.google.protobuf.ByteString found.");
-          } catch (ClassNotFoundException ex) {
-            throw new RuntimeException(ex);
-          }
+          LOG.error("Did not find relocated ByteString class from hadoop-thirdparty. "
+            + "Hadoop 3.3.0+ is required.", e);
+	  throw new RuntimeException(e);
         }
 
         // LiteralByteString is a package private class in protobuf. Make it accessible.

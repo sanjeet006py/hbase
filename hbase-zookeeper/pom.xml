@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <!--
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -23,12 +23,13 @@
   <parent>
     <groupId>org.apache.hbase</groupId>
     <artifactId>hbase-build-configuration</artifactId>
-    <version>${revision}</version>
+    <version>2.5.10-sfdc-1.0.0-SNAPSHOT</version>
     <relativePath>../hbase-build-configuration</relativePath>
   </parent>
   <artifactId>hbase-zookeeper</artifactId>
   <name>Apache HBase - Zookeeper</name>
   <description>Zookeeper Helpers for HBase</description>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
@@ -92,6 +93,10 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>commons-cli</groupId>
+      <artifactId>commons-cli</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
     </dependency>
@@ -129,18 +134,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
+      <groupId>ch.qos.reload4j</groupId>
+      <artifactId>reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- ZooKeeperServer needs the below dependencies, thus MiniZooKeeperCluster also needs them -->
@@ -199,41 +199,6 @@
     </plugins>
   </build>
   <profiles>
-    <!-- Needs to make the profile in apache parent pom -->
-    <profile>
-      <id>apache-release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-resources-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>license-javadocs</id>
-                <goals>
-                  <goal>copy-resources</goal>
-                </goals>
-                <phase>prepare-package</phase>
-                <configuration>
-                  <outputDirectory>${project.build.directory}/apidocs</outputDirectory>
-                  <resources>
-                    <resource>
-                      <directory>src/main/javadoc/META-INF/</directory>
-                      <targetPath>META-INF/</targetPath>
-                      <includes>
-                        <include>LICENSE</include>
-                        <include>NOTICE</include>
-                      </includes>
-                      <filtering>true</filtering>
-                    </resource>
-                  </resources>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
     <!-- Skip the tests in this module -->
     <profile>
       <id>skipZooKeeperTests</id>
@@ -251,14 +216,12 @@
     <!-- There are a lot of common dependencies used here, should investigate
     if we can combine these profiles somehow -->
 
-    <!-- profile for building against Hadoop 2.x.  This is the default.  -->
     <profile>
       <id>hadoop-2.0</id>
       <activation>
         <property>
-          <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
-          <!--h2-->
-          <name>!hadoop.profile</name>
+          <name>hadoop.profile</name>
+          <value>2.0</value>
         </property>
       </activation>
       <dependencies>
@@ -295,16 +258,12 @@
         </plugins>
       </build>
     </profile>
-    <!--
-      profile for building against Hadoop 3.0.x. Activate using:
-       mvn -Dhadoop.profile=3.0
-    -->
+
     <profile>
       <id>hadoop-3.0</id>
       <activation>
         <property>
-          <name>hadoop.profile</name>
-          <value>3.0</value>
+          <name>!hadoop.profile</name>
         </property>
       </activation>
       <dependencies>

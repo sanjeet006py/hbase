@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.rsgroup;
 
-import com.google.protobuf.ServiceException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,9 +63,6 @@ import org.apache.hadoop.hbase.master.procedure.MasterProcedureUtil;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.procedure2.Procedure;
 import org.apache.hadoop.hbase.protobuf.ProtobufMagic;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos;
-import org.apache.hadoop.hbase.protobuf.generated.RSGroupProtos;
 import org.apache.hadoop.hbase.regionserver.DisabledRegionSplitPolicy;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
@@ -82,6 +78,12 @@ import org.slf4j.LoggerFactory;
 import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
 import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
 import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MultiRowMutationProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupProtos;
 
 /**
  * This is an implementation of {@link RSGroupInfoManager} which makes use of an HBase table as the
@@ -904,13 +906,11 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
         MultiRowMutationProtos.MutateRowsRequest.newBuilder();
       for (Mutation mutation : mutations) {
         if (mutation instanceof Put) {
-          mmrBuilder.addMutationRequest(org.apache.hadoop.hbase.protobuf.ProtobufUtil.toMutation(
-            org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType.PUT,
-            mutation));
+          mmrBuilder.addMutationRequest(
+            ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.PUT, mutation));
         } else if (mutation instanceof Delete) {
-          mmrBuilder.addMutationRequest(org.apache.hadoop.hbase.protobuf.ProtobufUtil.toMutation(
-            org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType.DELETE,
-            mutation));
+          mmrBuilder.addMutationRequest(
+            ProtobufUtil.toMutation(ClientProtos.MutationProto.MutationType.DELETE, mutation));
         } else {
           throw new DoNotRetryIOException(
             "multiMutate doesn't support " + mutation.getClass().getName());

@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.protobuf.Service;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import org.apache.hadoop.conf.Configuration;
@@ -41,6 +40,8 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
 

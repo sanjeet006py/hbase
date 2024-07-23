@@ -27,7 +27,6 @@ import static org.apache.hadoop.hbase.trace.TraceUtil.tracedFuture;
 import static org.apache.hadoop.hbase.trace.TraceUtil.tracedFutures;
 import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
 
-import com.google.protobuf.RpcChannel;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
@@ -62,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 import org.apache.hbase.thirdparty.io.netty.util.Timer;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;

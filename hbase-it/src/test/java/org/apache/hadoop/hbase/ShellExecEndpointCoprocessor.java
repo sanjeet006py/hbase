@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.Service;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
@@ -29,9 +26,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.chaos.monkies.ChaosMonkey;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessor;
 import org.apache.hadoop.hbase.coprocessor.RegionServerCoprocessor;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.util.Shell;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -39,6 +33,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
+
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
 
 /**
  * Receives shell commands from the client and executes them blindly. Intended only for use by

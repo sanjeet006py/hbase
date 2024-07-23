@@ -780,14 +780,10 @@ public final class ZKUtil {
     } catch (KeeperException.NodeExistsException nee) {
       // pass
     } catch (KeeperException.NoAuthException nee) {
-      try {
-        if (zk.exists(znode, false) == null) {
-          // If we failed to create the file and it does not already exist.
-          throw nee;
-        }
-      } catch (InterruptedException ie) {
-        zkw.interruptedException(ie);
-      }
+      // We used to use exists() here to check if maybe we managed to create the znode but since
+      // ZOOKEEPER-2590 (exists should check read ACL permission) we have no available information
+      // upon NoAuthException and must always pass silently.
+      // pass
     } catch (InterruptedException ie) {
       zkw.interruptedException(ie);
     }

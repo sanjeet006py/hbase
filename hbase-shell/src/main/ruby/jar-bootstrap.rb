@@ -138,8 +138,8 @@ script2run = ARGV.shift unless ARGV.empty?
 ARGV.unshift('-d') if @shell_debug
 
 # Set logging level to avoid verboseness
-org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.zookeeper', log_level)
-org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.hadoop', log_level)
+org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.zookeeper', log_level)
+org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.hadoop.hbase', log_level)
 
 # Require HBase now after setting log levels
 require 'hbase_constants'
@@ -171,8 +171,8 @@ def debug
     conf.back_trace_limit = 100
     log_level = 'DEBUG'
   end
-  org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.zookeeper', log_level)
-  org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.hadoop', log_level)
+  org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.zookeeper', log_level)
+  org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.hadoop', log_level)
   debug?
 end
 

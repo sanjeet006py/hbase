@@ -22,11 +22,12 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.coprocessor.ColumnInterpreter;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.EmptyMsg;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.LongMsg;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.EmptyMsg;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.LongMsg;
 
 /**
  * a concrete column interpreter implementation. The cell value is a Long value and its promoted

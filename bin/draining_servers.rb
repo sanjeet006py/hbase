@@ -137,9 +137,9 @@ hostOrServers = ARGV[1..ARGV.size]
 
 # disable debug/info logging on this script for clarity
 log_level = 'ERROR'
-org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.hadoop.hbase', log_level)
-org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.zookeeper', log_level)
-org.apache.hadoop.hbase.logging.Log4jUtils.setAllLevels('org.apache.hadoop', log_level)
+org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.hadoop.hbase', log_level)
+org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.zookeeper', log_level)
+org.apache.hadoop.hbase.logging.Log4jUtils.setLogLevel('org.apache.hadoop', log_level)
 
 case ARGV[0]
 when 'add'

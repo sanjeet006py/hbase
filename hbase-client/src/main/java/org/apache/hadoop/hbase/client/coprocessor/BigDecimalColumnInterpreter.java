@@ -25,12 +25,14 @@ import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.coprocessor.ColumnInterpreter;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.BigDecimalMsg;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.EmptyMsg;
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
+
+import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.BigDecimalMsg;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.EmptyMsg;
 
 /**
  * ColumnInterpreter for doing Aggregation's with BigDecimal columns. This class is required at the
@@ -120,7 +122,7 @@ public class BigDecimalColumnInterpreter
 
   private BigDecimalMsg getProtoForType(BigDecimal t) {
     BigDecimalMsg.Builder builder = BigDecimalMsg.newBuilder();
-    return builder.setBigdecimalMsg(ByteStringer.wrap(Bytes.toBytes(t))).build();
+    return builder.setBigdecimalMsg(UnsafeByteOperations.unsafeWrap(Bytes.toBytes(t))).build();
   }
 
   @Override

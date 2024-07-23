@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.protobuf.RpcChannel;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +25,8 @@ import java.util.function.Function;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 
 /**
  * Additional Asynchronous Admin capabilities for clients.

@@ -10,13 +10,13 @@
  See the License for the specific language governing permissions and
  limitations under the License. See accompanying LICENSE file.
 -->
-<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.hbase</groupId>
     <artifactId>hbase</artifactId>
-    <version>${revision}</version>
-    <relativePath>../..</relativePath>
+    <version>2.5.10-sfdc-1.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
   </parent>
   <artifactId>hbase-shaded-with-hadoop-check-invariants</artifactId>
   <packaging>pom</packaging>
@@ -36,6 +36,7 @@
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-shaded-client</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- parent pom defines these for children. :( :( :( -->
     <dependency>
@@ -44,18 +45,13 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-reload4j</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
+      <groupId>ch.qos.reload4j</groupId>
+      <artifactId>reload4j</artifactId>
       <scope>provided</scope>
     </dependency>
     <!-- Test dependencies -->
@@ -102,6 +98,8 @@
                   <excludes>
                     <!-- We leave logging stuff alone -->
                     <exclude>org.slf4j:*</exclude>
+                    <exclude>log4j:*</exclude>
+                    <exclude>ch.qos.reload4j:*</exclude>
                     <exclude>org.apache.logging.log4j:*</exclude>
                     <exclude>commons-logging:*</exclude>
                     <!-- annotations that never change -->
@@ -189,7 +187,7 @@
             difficult to debug classpath errors for downstream. Unfortunately, that
             means inspecting all the jars.
             -->
-          <execution>
+          <!-- SFDC change (PHOENIX-6053) <execution>
             <id>check-jar-contents-for-stuff-with-hadoop</id>
             <goals>
               <goal>exec</goal>
@@ -201,11 +199,11 @@
               <requiresOnline>false</requiresOnline>
               <arguments>
                 <argument>ensure-jars-have-correct-contents.sh</argument>
-                <argument>--allow-hadoop</argument>
+                <argument>-allow-hadoop</argument>
                 <argument>${hbase-client-artifacts}</argument>
               </arguments>
             </configuration>
-          </execution>
+          </execution> -->
         </executions>
       </plugin>
     </plugins>

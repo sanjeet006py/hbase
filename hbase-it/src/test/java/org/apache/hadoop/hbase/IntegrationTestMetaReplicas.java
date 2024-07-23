@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.TestMetaWithReplicasShutdownHandling;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.regionserver.StorefileRefresherChore;
 import org.apache.hadoop.hbase.testclassification.IntegrationTests;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -32,6 +31,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 
 /**
  * An integration test that starts the cluster with three replicas for the meta It then creates a
@@ -64,9 +65,8 @@ public class IntegrationTestMetaReplicas {
       conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT, HConstants.DEFAULT_ZOOKEEPER_ZNODE_PARENT);
     String primaryMetaZnode =
       ZNodePaths.joinZNode(baseZNode, conf.get("zookeeper.znode.metaserver", "meta-region-server"));
-    // check that the data in the znode is parseable (this would also mean the znode exists)
+    // check that the data in the znode exists
     byte[] data = ZKUtil.getData(zkw, primaryMetaZnode);
-    ProtobufUtil.toServerName(data);
     waitUntilZnodeAvailable(1);
     waitUntilZnodeAvailable(2);
   }

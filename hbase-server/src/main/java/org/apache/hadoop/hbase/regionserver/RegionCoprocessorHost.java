@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.protobuf.Message;
-import com.google.protobuf.Service;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -82,6 +80,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 import org.apache.hbase.thirdparty.org.apache.commons.collections4.map.AbstractReferenceMap;
 import org.apache.hbase.thirdparty.org.apache.commons.collections4.map.ReferenceMap;
 

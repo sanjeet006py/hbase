@@ -1,0 +1,5 @@
+- source_branch: 2.5.10-sfdc-13
+  ci_branch: master
+  stack_boms:
+  - hadoop-3.3
+  merge_method: squash

@@ -769,7 +769,6 @@ public class TableMapReduceUtil {
     addDependencyJarsForClasses(conf,
       // explicitly pull a class from each module
       org.apache.hadoop.hbase.HConstants.class, // hbase-common
-      org.apache.hadoop.hbase.protobuf.generated.ClientProtos.class, // hbase-protocol
       org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.class, // hbase-protocol-shaded
       org.apache.hadoop.hbase.client.Put.class, // hbase-client
       org.apache.hadoop.hbase.ipc.RpcServer.class, // hbase-server
@@ -788,7 +787,6 @@ public class TableMapReduceUtil {
       org.apache.hbase.thirdparty.io.netty.channel.Channel.class, // hbase-shaded-netty
       org.apache.hadoop.hbase.unsafe.HBasePlatformDependent.class, // hbase-unsafe
       org.apache.zookeeper.ZooKeeper.class, // zookeeper
-      com.google.protobuf.Message.class, // protobuf
       com.codahale.metrics.MetricRegistry.class, // metrics-core
       org.apache.commons.lang3.ArrayUtils.class, // commons-lang
       io.opentelemetry.api.trace.Span.class, // opentelemetry-api

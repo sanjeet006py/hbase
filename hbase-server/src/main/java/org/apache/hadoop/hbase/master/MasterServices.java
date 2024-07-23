@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.master;
 
-import com.google.protobuf.Service;
 import java.io.IOException;
 import java.util.List;
 import org.apache.hadoop.hbase.Server;
@@ -54,6 +53,8 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 
 /**
  * A curated subset of services provided by {@link HMaster}. For use internally only. Passed to

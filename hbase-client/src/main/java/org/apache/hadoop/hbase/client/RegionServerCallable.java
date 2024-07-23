@@ -26,11 +26,12 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 
 /**
  * Implementations make a RPC call against a RegionService via a protobuf Service. Implement
@@ -107,7 +108,8 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
   public T call(int callTimeout) throws IOException {
     try {
       // Iff non-null and an instance of a SHADED rpcController, do config! Unshaded -- i.e.
-      // com.google.protobuf.RpcController or null -- will just skip over this config.
+      // org.apache.hbase.thirdparty.com.google.protobuf.RpcController or null -- will just skip
+      // over this config.
       if (getRpcController() != null) {
         RpcController shadedRpcController = (RpcController) getRpcController();
         // Do a reset to clear previous states, such as CellScanner.

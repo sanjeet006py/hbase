@@ -20,8 +20,6 @@ package org.apache.hadoop.hbase.rest.model;
 import static org.apache.hadoop.hbase.rest.model.CellModel.MAGIC_LENGTH;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.Message;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -35,8 +33,12 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
+import org.apache.hadoop.hbase.rest.RestUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.CodedInputStream;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 /**
  * Representation of a row. A row is a related set of cells, grouped by common row key. RowModels do

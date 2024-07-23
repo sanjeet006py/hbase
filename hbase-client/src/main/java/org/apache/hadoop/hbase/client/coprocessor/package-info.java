@@ -129,18 +129,18 @@ The generated {@code RowCountService} interface should look something like:
 <div style="background-color: #cccccc; padding: 2px">
 <blockquote><pre>
 public static abstract class RowCountService
-  implements com.google.protobuf.Service {
+  implements org.apache.hbase.thirdparty.com.google.protobuf.Service {
   ...
   public interface Interface {
     public abstract void getRowCount(
-        com.google.protobuf.RpcController controller,
+        org.apache.hbase.thirdparty.com.google.protobuf.RpcController controller,
         org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountRequest request,
-        com.google.protobuf.RpcCallback&lt;org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountResponse&gt; done);
+        org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback&lt;org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountResponse&gt; done);
 
     public abstract void getKeyValueCount(
-        com.google.protobuf.RpcController controller,
+        org.apache.hbase.thirdparty.com.google.protobuf.RpcController controller,
         org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountRequest request,
-        com.google.protobuf.RpcCallback&lt;org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountResponse&gt; done);
+        org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback&lt;org.apache.hadoop.hbase.coprocessor.example.generated.ExampleProtos.CountResponse&gt; done);
   }
 }
 </pre></blockquote></div>

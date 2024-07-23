@@ -17,12 +17,13 @@
  */
 package org.apache.hadoop.hbase.coprocessor;
 
-import com.google.protobuf.Message;
 import java.io.IOException;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 /**
  * Defines how value for specific column is interpreted and provides utility methods like compare,

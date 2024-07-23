@@ -1,0 +1,17 @@
+org.apache.hadoop.hbase.TestMetaTableAccessor
+org.apache.hadoop.hbase.client.TestTableShell
+org.apache.hadoop.hbase.io.asyncfs.TestFanOutOneBlockAsyncDFSOutput
+org.apache.hadoop.hbase.io.asyncfs.TestFanOutOneBlockAsyncDFSOutputHang
+org.apache.hadoop.hbase.io.asyncfs.TestOverwriteFileUnderConstruction
+org.apache.hadoop.hbase.io.hfile.TestHFile
+org.apache.hadoop.hbase.master.TestMergeTableRegionsWhileRSCrash
+org.apache.hadoop.hbase.master.TestSplitRegionWhileRSCrash
+org.apache.hadoop.hbase.master.TestUnknownServers
+org.apache.hadoop.hbase.master.region.TestMasterRegionCompaction
+org.apache.hadoop.hbase.regionserver.TestMemStoreLAB
+org.apache.hadoop.hbase.regionserver.TestMobStoreScanner
+org.apache.hadoop.hbase.replication.regionserver.TestBasicWALEntryStreamAsyncFSWAL
+org.apache.hadoop.hbase.replication.regionserver.TestBasicWALEntryStreamFSHLog
+org.apache.hadoop.hbase.replication.regionserver.TestRefreshRecoveredReplication
+org.apache.hadoop.hbase.security.access.TestCellACLWithMultipleVersions
+org.apache.hadoop.hbase.coprocessor.example.TestZooKeeperScanPolicyObserver

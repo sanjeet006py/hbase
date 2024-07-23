@@ -17,10 +17,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.Service;
-import com.google.protobuf.ServiceException;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
@@ -40,6 +36,11 @@ import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 
 /**
  * Used to communicate with a single HBase table. Obtain an instance from a {@link Connection} and
@@ -693,15 +694,17 @@ public interface Table extends Closeable {
   }
 
   /**
-   * Creates and returns a {@link com.google.protobuf.RpcChannel} instance connected to the table
-   * region containing the specified row. The row given does not actually have to exist. Whichever
-   * region would contain the row based on start and end keys will be used. Note that the
-   * {@code row} parameter is also not passed to the coprocessor handler registered for this
-   * protocol, unless the {@code row} is separately passed as an argument in the service request.
-   * The parameter here is only used to locate the region used to handle the call.
+   * Creates and returns a {@link org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel}
+   * instance connected to the table region containing the specified row. The row given does not
+   * actually have to exist. Whichever region would contain the row based on start and end keys will
+   * be used. Note that the {@code row} parameter is also not passed to the coprocessor handler
+   * registered for this protocol, unless the {@code row} is separately passed as an argument in the
+   * service request. The parameter here is only used to locate the region used to handle the call.
    * <p>
-   * The obtained {@link com.google.protobuf.RpcChannel} instance can be used to access a published
-   * coprocessor {@link com.google.protobuf.Service} using standard protobuf service invocations:
+   * The obtained {@link org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel} instance can be
+   * used to access a published coprocessor
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} using standard protobuf service
+   * invocations:
    * </p>
    * <div style="background-color: #cccccc; padding: 2px"> <blockquote>
    *
@@ -723,10 +726,11 @@ public interface Table extends Closeable {
   }
 
   /**
-   * Creates an instance of the given {@link com.google.protobuf.Service} subclass for each table
-   * region spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), and
-   * invokes the passed {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method
-   * with each {@link com.google.protobuf.Service} instance.
+   * Creates an instance of the given
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} subclass for each table region
+   * spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), and invokes
+   * the passed {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method with each
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} instance.
    * @param service  the protocol buffer {@code Service} implementation to call
    * @param startKey start region selection with region containing this row. If {@code null}, the
    *                 selection will start with the first table region.
@@ -734,9 +738,11 @@ public interface Table extends Closeable {
    *                 {@code null}, selection will continue through the last table region.
    * @param callable this instance's
    *                 {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method will
-   *                 be invoked once per table region, using the {@link com.google.protobuf.Service}
-   *                 instance connected to that region.
-   * @param <T>      the {@link com.google.protobuf.Service} subclass to connect to
+   *                 be invoked once per table region, using the
+   *                 {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} instance
+   *                 connected to that region.
+   * @param <T>      the {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} subclass to
+   *                 connect to
    * @param <R>      Return type for the {@code callable} parameter's
    *                 {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method
    * @return a map of result values keyed by region name
@@ -748,10 +754,11 @@ public interface Table extends Closeable {
   }
 
   /**
-   * Creates an instance of the given {@link com.google.protobuf.Service} subclass for each table
-   * region spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), and
-   * invokes the passed {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method
-   * with each {@link Service} instance.
+   * Creates an instance of the given
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} subclass for each table region
+   * spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), and invokes
+   * the passed {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Call#call} method with each
+   * {@link Service} instance.
    * <p>
    * The given
    * {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Callback#update(byte[],byte[],Object)}
@@ -778,15 +785,16 @@ public interface Table extends Closeable {
   }
 
   /**
-   * Creates an instance of the given {@link com.google.protobuf.Service} subclass for each table
-   * region spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), all
-   * the invocations to the same region server will be batched into one call. The coprocessor
-   * service is invoked according to the service instance, method name and parameters. the
-   * descriptor for the protobuf service method to call. the method call parameters start region
-   * selection with region containing this row. If {@code null}, the selection will start with the
-   * first table region. select regions up to and including the region containing this row. If
-   * {@code null}, selection will continue through the last table region. the proto type of the
-   * response of the method in Service.
+   * Creates an instance of the given
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} subclass for each table region
+   * spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), all the
+   * invocations to the same region server will be batched into one call. The coprocessor service is
+   * invoked according to the service instance, method name and parameters. n * the descriptor for
+   * the protobuf service method to call. n * the method call parameters n * start region selection
+   * with region containing this row. If {@code null}, the selection will start with the first table
+   * region. n * select regions up to and including the region containing this row. If {@code null},
+   * selection will continue through the last table region. n * the proto type of the response of
+   * the method in Service.
    * @param <R> the response type for the coprocessor Service method
    * @return a map of result values keyed by region name
    */
@@ -797,10 +805,11 @@ public interface Table extends Closeable {
   }
 
   /**
-   * Creates an instance of the given {@link com.google.protobuf.Service} subclass for each table
-   * region spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), all
-   * the invocations to the same region server will be batched into one call. The coprocessor
-   * service is invoked according to the service instance, method name and parameters.
+   * Creates an instance of the given
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Service} subclass for each table region
+   * spanning the range from the {@code startKey} row to {@code endKey} row (inclusive), all the
+   * invocations to the same region server will be batched into one call. The coprocessor service is
+   * invoked according to the service instance, method name and parameters.
    * <p>
    * The given
    * {@link org.apache.hadoop.hbase.client.coprocessor.Batch.Callback#update(byte[],byte[],Object)}

@@ -1,0 +1,40 @@
+- suite: org.apache.hadoop.hbase.TestMetaTableAccessor
+  is_ut: true
+  testcases:
+    - testGetMergeRegions
+- suite: org.apache.hadoop.hbase.client.TestTableShell
+  is_ut: true
+- suite: org.apache.hadoop.hbase.io.asyncfs.TestFanOutOneBlockAsyncDFSOutput
+  is_ut: true
+- suite: org.apache.hadoop.hbase.io.asyncfs.TestFanOutOneBlockAsyncDFSOutputHang
+  is_ut: true
+- suite: org.apache.hadoop.hbase.io.asyncfs.TestOverwriteFileUnderConstruction
+  is_ut: true
+- suite: org.apache.hadoop.hbase.io.hfile.TestHFile
+  is_ut: true
+- suite: org.apache.hadoop.hbase.master.TestMergeTableRegionsWhileRSCrash
+  is_ut: true
+- suite: org.apache.hadoop.hbase.master.TestSplitRegionWhileRSCrash
+  is_ut: true
+- suite: org.apache.hadoop.hbase.master.TestUnknownServers
+  is_ut: true
+- suite: org.apache.hadoop.hbase.master.region.TestMasterRegionCompaction
+  is_ut: true
+- suite: org.apache.hadoop.hbase.regionserver.TestMemStoreLAB
+  is_ut: true
+- suite: org.apache.hadoop.hbase.regionserver.TestMobStoreScanner
+  is_ut: true
+- suite: org.apache.hadoop.hbase.replication.regionserver.TestBasicWALEntryStreamAsyncFSWAL
+  is_ut: true
+  testcases:
+    - testCleanClosedWALs
+- suite: org.apache.hadoop.hbase.replication.regionserver.TestBasicWALEntryStreamFSHLog
+  is_ut: true
+  testcases:
+    - testCleanClosedWALs
+- suite: org.apache.hadoop.hbase.replication.regionserver.TestRefreshRecoveredReplication
+  is_ut: true
+- suite: org.apache.hadoop.hbase.security.access.TestCellACLWithMultipleVersions
+  is_ut: true
+- suite: org.apache.hadoop.hbase.coprocessor.example.TestZooKeeperScanPolicyObserver
+  is_ut: true

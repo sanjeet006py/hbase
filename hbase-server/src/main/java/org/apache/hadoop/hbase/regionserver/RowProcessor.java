@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.protobuf.Message;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -28,6 +27,8 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 /**
  * Defines the procedures to atomically perform multiple scans and mutations on a HRegion. This is

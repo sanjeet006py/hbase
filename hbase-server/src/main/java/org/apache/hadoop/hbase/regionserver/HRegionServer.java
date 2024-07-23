@@ -211,7 +211,10 @@ import org.apache.hbase.thirdparty.com.google.common.cache.Cache;
 import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
 import org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel;
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 import org.apache.hbase.thirdparty.com.google.protobuf.TextFormat;
 import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
@@ -472,7 +475,7 @@ public class HRegionServer extends Thread
   /** The nonce manager chore. */
   private ScheduledChore nonceManagerChore;
 
-  private Map<String, com.google.protobuf.Service> coprocessorServiceHandlers = Maps.newHashMap();
+  private Map<String, Service> coprocessorServiceHandlers = Maps.newHashMap();
 
   /**
    * The server name the Master sees us as. Its made from the hostname the master passes us, port,
@@ -874,11 +877,11 @@ public class HRegionServer extends Thread
   }
 
   @Override
-  public boolean registerService(com.google.protobuf.Service instance) {
+  public boolean registerService(Service instance) {
     /*
      * No stacking of instances is allowed for a single executorService name
      */
-    com.google.protobuf.Descriptors.ServiceDescriptor serviceDesc = instance.getDescriptorForType();
+    Descriptors.ServiceDescriptor serviceDesc = instance.getDescriptorForType();
     String serviceName = CoprocessorRpcUtils.getServiceName(serviceDesc);
     if (coprocessorServiceHandlers.containsKey(serviceName)) {
       LOG.error("Coprocessor executorService " + serviceName
@@ -3688,25 +3691,25 @@ public class HRegionServer extends Thread
       ServerRpcController serviceController = new ServerRpcController();
       CoprocessorServiceCall call = serviceRequest.getCall();
       String serviceName = call.getServiceName();
-      com.google.protobuf.Service service = coprocessorServiceHandlers.get(serviceName);
+      Service service = coprocessorServiceHandlers.get(serviceName);
       if (service == null) {
         throw new UnknownProtocolException(null,
           "No registered coprocessor executorService found for " + serviceName);
       }
-      com.google.protobuf.Descriptors.ServiceDescriptor serviceDesc =
+      Descriptors.ServiceDescriptor serviceDesc =
         service.getDescriptorForType();
 
       String methodName = call.getMethodName();
-      com.google.protobuf.Descriptors.MethodDescriptor methodDesc =
+      Descriptors.MethodDescriptor methodDesc =
         serviceDesc.findMethodByName(methodName);
       if (methodDesc == null) {
         throw new UnknownProtocolException(service.getClass(),
           "Unknown method " + methodName + " called on executorService " + serviceName);
       }
 
-      com.google.protobuf.Message request =
+      Message request =
         CoprocessorRpcUtils.getRequest(service, methodDesc, call.getRequest());
-      final com.google.protobuf.Message.Builder responseBuilder =
+      final Message.Builder responseBuilder =
         service.getResponsePrototype(methodDesc).newBuilderForType();
       service.callMethod(methodDesc, serviceController, request, message -> {
         if (message != null) {

@@ -112,7 +112,7 @@ public class AsyncClientExample extends Configured implements Tool {
     CompletableFuture<Void> closeFuture = new CompletableFuture<>();
     addListener(f, (conn, error) -> {
       if (error == null) {
-        IOUtils.closeQuietly(conn, e -> LOG.warn("failed to close conn", e));
+        IOUtils.closeQuietly(conn);
       }
       closeFuture.complete(null);
     });

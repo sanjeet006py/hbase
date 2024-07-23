@@ -119,6 +119,17 @@ message CheckPermissionsRequest {
 message CheckPermissionsResponse {
 }
 
+// Deprecated
+message HasPermissionRequest {
+  required TablePermission table_permission = 1;
+  required bytes user_name = 2;
+}
+
+// Deprecated
+message HasPermissionResponse {
+  optional bool has_permission = 1;
+}
+
 message HasUserPermissionsRequest {
   optional bytes user_name = 1;
   repeated Permission permission = 2;
@@ -140,4 +151,8 @@ service AccessControlService {
 
     rpc CheckPermissions(CheckPermissionsRequest)
       returns (CheckPermissionsResponse);
+
+    // Deprecated
+    rpc HasPermission(HasPermissionRequest)
+      returns (HasPermissionResponse);
 }

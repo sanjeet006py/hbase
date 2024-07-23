@@ -109,6 +109,7 @@ public class ProtobufDecoder extends MessageToMessageDecoder<ByteBuf> {
 
   static {
     boolean hasParser = false;
+
     // These are the protobuf classes coming from Hadoop. Not the one from hbase-shaded-protobuf
     try {
       protobufMessageLiteClass = Class.forName("org.apache.hadoop.thirdparty.protobuf.MessageLite");
@@ -116,13 +117,8 @@ public class ProtobufDecoder extends MessageToMessageDecoder<ByteBuf> {
         Class.forName("org.apache.hadoop.thirdparty.protobuf.MessageLite$Builder");
       LOG.debug("Hadoop 3.3 and above shades protobuf.");
     } catch (ClassNotFoundException e) {
-      LOG.debug("Hadoop 3.2 and below use unshaded protobuf.", e);
-      try {
-        protobufMessageLiteClass = Class.forName("com.google.protobuf.MessageLite");
-        protobufMessageLiteBuilderClass = Class.forName("com.google.protobuf.MessageLite$Builder");
-      } catch (ClassNotFoundException ex) {
-        throw new RuntimeException("can not initialize protobuf related classes for hadoop", ex);
-      }
+      LOG.error("Hadoop 3.2 and below use unshaded protobuf, which we do not support.", e);
+      throw new RuntimeException(e);
     }
 
     try {

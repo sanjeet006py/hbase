@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -108,6 +109,7 @@ import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.master.RegionState;
+import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.protobuf.ProtobufMagic;
 import org.apache.hadoop.hbase.protobuf.ProtobufMessageConverter;
 import org.apache.hadoop.hbase.quotas.QuotaScope;
@@ -116,6 +118,7 @@ import org.apache.hadoop.hbase.quotas.SpaceViolationPolicy;
 import org.apache.hadoop.hbase.quotas.ThrottleType;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSink;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
+import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
 import org.apache.hadoop.hbase.security.visibility.Authorizations;
 import org.apache.hadoop.hbase.security.visibility.CellVisibility;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -204,6 +207,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.QuotaProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RecentLogs;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.RegionServerStartupRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RSGroupProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.TooSlowLog;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos;
@@ -3656,5 +3660,43 @@ public final class ProtobufUtil {
       ByteStreams.readFully(in, bytes);
       return parser.parseFrom(bytes);
     }
+  }
+
+  public static RSGroupInfo toGroupInfo(RSGroupProtos.RSGroupInfo proto) {
+    RSGroupInfo rsGroupInfo = new RSGroupInfo(proto.getName());
+
+    Collection<Address> addresses = proto.getServersList().parallelStream()
+      .map(serverName -> Address.fromParts(serverName.getHostName(), serverName.getPort()))
+      .collect(Collectors.toList());
+    rsGroupInfo.addAllServers(addresses);
+
+    Collection<TableName> tables = proto.getTablesList().parallelStream()
+      .map(ProtobufUtil::toTableName).collect(Collectors.toList());
+    rsGroupInfo.addAllTables(tables);
+    return rsGroupInfo;
+  }
+
+  public static CellProtos.Cell toCell(final Cell kv) {
+    // Doing this is going to kill us if we do it for all data passed.
+    // St.Ack 20121205
+    CellProtos.Cell.Builder kvbuilder = CellProtos.Cell.newBuilder();
+    kvbuilder.setRow(
+      UnsafeByteOperations.unsafeWrap(kv.getRowArray(), kv.getRowOffset(), kv.getRowLength()));
+    kvbuilder.setFamily(UnsafeByteOperations.unsafeWrap(kv.getFamilyArray(), kv.getFamilyOffset(),
+      kv.getFamilyLength()));
+    kvbuilder.setQualifier(UnsafeByteOperations.unsafeWrap(kv.getQualifierArray(),
+      kv.getQualifierOffset(), kv.getQualifierLength()));
+    kvbuilder.setCellType(CellProtos.CellType.valueOf(kv.getTypeByte()));
+    kvbuilder.setTimestamp(kv.getTimestamp());
+    kvbuilder.setValue(UnsafeByteOperations.unsafeWrap(kv.getValueArray(), kv.getValueOffset(),
+      kv.getValueLength()));
+    return kvbuilder.build();
+  }
+
+  public static Cell toCell(ExtendedCellBuilder cellBuilder, final CellProtos.Cell cell) {
+    return cellBuilder.clear().setRow(cell.getRow().toByteArray())
+      .setFamily(cell.getFamily().toByteArray()).setQualifier(cell.getQualifier().toByteArray())
+      .setTimestamp(cell.getTimestamp()).setType((byte) cell.getCellType().getNumber())
+      .setValue(cell.getValue().toByteArray()).build();
   }
 }

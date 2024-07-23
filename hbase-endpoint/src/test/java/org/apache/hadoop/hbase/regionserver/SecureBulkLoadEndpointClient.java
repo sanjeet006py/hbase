@@ -26,18 +26,20 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.ServerRpcController;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CleanupBulkLoadRequest;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CleanupBulkLoadResponse;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.DelegationToken;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.PrepareBulkLoadRequest;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.PrepareBulkLoadResponse;
-import org.apache.hadoop.hbase.protobuf.generated.SecureBulkLoadProtos;
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.token.Token;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.DelegationToken;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.SecureBulkLoadProtos;
 
 /**
  * Client proxy for SecureBulkLoadProtocol used in conjunction with SecureBulkLoadEndpoint
@@ -115,18 +117,19 @@ public class SecureBulkLoadEndpointClient {
 
       DelegationToken protoDT = DelegationToken.newBuilder().build();
       if (userToken != null) {
-        protoDT =
-          DelegationToken.newBuilder().setIdentifier(ByteStringer.wrap(userToken.getIdentifier()))
-            .setPassword(ByteStringer.wrap(userToken.getPassword()))
-            .setKind(userToken.getKind().toString()).setService(userToken.getService().toString())
-            .build();
+        protoDT = DelegationToken.newBuilder()
+          .setIdentifier(UnsafeByteOperations.unsafeWrap(userToken.getIdentifier()))
+          .setPassword(UnsafeByteOperations.unsafeWrap(userToken.getPassword()))
+          .setKind(userToken.getKind().toString()).setService(userToken.getService().toString())
+          .build();
       }
 
       List<ClientProtos.BulkLoadHFileRequest.FamilyPath> protoFamilyPaths =
         new ArrayList<>(familyPaths.size());
       for (Pair<byte[], String> el : familyPaths) {
         protoFamilyPaths.add(ClientProtos.BulkLoadHFileRequest.FamilyPath.newBuilder()
-          .setFamily(ByteStringer.wrap(el.getFirst())).setPath(el.getSecond()).build());
+          .setFamily(UnsafeByteOperations.unsafeWrap(el.getFirst())).setPath(el.getSecond())
+          .build());
       }
 
       SecureBulkLoadProtos.SecureBulkLoadHFilesRequest request =

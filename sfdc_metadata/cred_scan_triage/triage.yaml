@@ -1,0 +1,7 @@
+clean: true
+mock_secret: []
+false_positive:
+  - id: hbase://hbase-common/src/main/java/org/apache/hadoop/hbase/io/crypto/KeyProvider.java_fb878f576ae670d45783d6e286b072ab8dffeef7
+    justification: Used as key for identifying password but not the actual password.
+non_production_secret: []
+production_secret: []

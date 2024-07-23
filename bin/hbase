@@ -545,7 +545,8 @@ fi
 if [ "$COMMAND" = "shell" ] ; then
 	#find the hbase ruby sources
   # assume we are in a binary install if lib/ruby exists
-  if [ -d "$HBASE_HOME/lib/ruby" ]; then
+#  SFDC Changes
+#  if [ -d "$HBASE_HOME/lib/ruby" ]; then
     # We want jruby to consume these things rather than our bootstrap script;
     # jruby will look for the env variable 'JRUBY_OPTS'.
     JRUBY_OPTS="${JRUBY_OPTS} -X+O"
@@ -555,10 +556,10 @@ if [ "$COMMAND" = "shell" ] ; then
     # https://github.com/jruby/jruby/wiki/StandaloneJarsAndClasses#standalone-executable-jar-files
     CLASS="org.jruby.JarBootstrapMain"
   # otherwise assume we are running in a source checkout
-  else
-    HBASE_OPTS="$HBASE_OPTS -Dhbase.ruby.sources=$HBASE_HOME/hbase-shell/src/main/ruby"
-    CLASS="org.jruby.Main -X+O ${JRUBY_OPTS} ${HBASE_HOME}/hbase-shell/src/main/ruby/jar-bootstrap.rb"
-  fi
+#  else
+#    HBASE_OPTS="$HBASE_OPTS -Dhbase.ruby.sources=$HBASE_HOME/hbase-shell/src/main/ruby"
+#    CLASS="org.jruby.Main -X+O ${JRUBY_OPTS} ${HBASE_HOME}/hbase-shell/src/main/ruby/jar-bootstrap.rb"
+#  fi
   HBASE_OPTS="$HBASE_OPTS $HBASE_SHELL_OPTS"
 elif [ "$COMMAND" = 'jshell' ] ; then
   java_version="$(read_java_version)"

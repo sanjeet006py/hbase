@@ -32,7 +32,6 @@ import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.SingleResponse;
 import org.apache.hadoop.hbase.ipc.ServerRpcController;
-import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.HasPermissionResponse;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -41,27 +40,14 @@ import org.slf4j.LoggerFactory;
 import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
 
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.CloseRegionResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetOnlineRegionResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.GetServerInfoResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.ServerInfo;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.MultiRequest;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.MultiResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.RegionAction;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.RegionActionResult;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ResultOrException;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ScanResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos.RegionStoreSequenceIds;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.NameBytesPair;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.NameInt64Pair;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MapReduceProtos.ScanMetrics;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.EnableCatalogJanitorResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.RunCatalogScanResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.RunCleanerChoreResponse;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MapReduceProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
 
 /**
  * Helper utility to build protocol buffer responses, or retrieve data from protocol buffer
@@ -92,8 +78,9 @@ public final class ResponseConverter {
    * @param cells    Cells to go with the passed in <code>proto</code>. Can be null.
    * @return the results that were in the MultiResponse (a Result or an Exception).
    */
-  public static org.apache.hadoop.hbase.client.MultiResponse getResults(final MultiRequest request,
-    final MultiResponse response, final CellScanner cells) throws IOException {
+  public static org.apache.hadoop.hbase.client.MultiResponse getResults(
+    final ClientProtos.MultiRequest request, final ClientProtos.MultiResponse response,
+    final CellScanner cells) throws IOException {
     return getResults(request, null, response, cells);
   }
 
@@ -105,9 +92,9 @@ public final class ResponseConverter {
    * @param cells    Cells to go with the passed in <code>proto</code>. Can be null.
    * @return the results that were in the MultiResponse (a Result or an Exception).
    */
-  public static org.apache.hadoop.hbase.client.MultiResponse getResults(final MultiRequest request,
-    final Map<Integer, Integer> indexMap, final MultiResponse response, final CellScanner cells)
-    throws IOException {
+  public static org.apache.hadoop.hbase.client.MultiResponse getResults(
+    final ClientProtos.MultiRequest request, final Map<Integer, Integer> indexMap,
+    final ClientProtos.MultiResponse response, final CellScanner cells) throws IOException {
     int requestRegionActionCount = request.getRegionActionCount();
     int responseRegionActionResultCount = response.getRegionActionResultCount();
     if (requestRegionActionCount != responseRegionActionResultCount) {
@@ -119,8 +106,8 @@ public final class ResponseConverter {
       new org.apache.hadoop.hbase.client.MultiResponse();
 
     for (int i = 0; i < responseRegionActionResultCount; i++) {
-      RegionAction actions = request.getRegionAction(i);
-      RegionActionResult actionResult = response.getRegionActionResult(i);
+      ClientProtos.RegionAction actions = request.getRegionAction(i);
+      ClientProtos.RegionActionResult actionResult = response.getRegionActionResult(i);
       HBaseProtos.RegionSpecifier rs = actions.getRegion();
       if (
         rs.hasType()
@@ -159,7 +146,7 @@ public final class ResponseConverter {
       }
 
       if (actions.hasCondition()) {
-        for (ResultOrException roe : actionResult.getResultOrExceptionList()) {
+        for (ClientProtos.ResultOrException roe : actionResult.getResultOrExceptionList()) {
           Result result = null;
           Result r = ProtobufUtil.toResult(roe.getResult(), cells);
           if (!r.isEmpty()) {
@@ -170,7 +157,7 @@ public final class ResponseConverter {
         }
       } else {
         if (actionResult.hasProcessed()) {
-          for (ResultOrException roe : actionResult.getResultOrExceptionList()) {
+          for (ClientProtos.ResultOrException roe : actionResult.getResultOrExceptionList()) {
             Result result = actionResult.getProcessed()
               ? ProtobufUtil.EMPTY_RESULT_EXISTS_TRUE
               : ProtobufUtil.EMPTY_RESULT_EXISTS_FALSE;
@@ -183,7 +170,7 @@ public final class ResponseConverter {
           }
           continue;
         }
-        for (ResultOrException roe : actionResult.getResultOrExceptionList()) {
+        for (ClientProtos.ResultOrException roe : actionResult.getResultOrExceptionList()) {
           Object responseValue;
           if (roe.hasException()) {
             responseValue = ProtobufUtil.toException(roe.getException());
@@ -209,13 +196,13 @@ public final class ResponseConverter {
     return results;
   }
 
-  private static CheckAndMutateResult getCheckAndMutateResult(RegionActionResult actionResult,
-    CellScanner cells) throws IOException {
+  private static CheckAndMutateResult getCheckAndMutateResult(
+    ClientProtos.RegionActionResult actionResult, CellScanner cells) throws IOException {
     Result result = null;
     if (actionResult.getResultOrExceptionCount() > 0) {
       // Get the result of the Increment/Append operations from the first element of the
       // ResultOrException list
-      ResultOrException roe = actionResult.getResultOrException(0);
+      ClientProtos.ResultOrException roe = actionResult.getResultOrException(0);
       if (roe.hasResult()) {
         Result r = ProtobufUtil.toResult(roe.getResult(), cells);
         if (!r.isEmpty()) {
@@ -226,14 +213,14 @@ public final class ResponseConverter {
     return new CheckAndMutateResult(actionResult.getProcessed(), result);
   }
 
-  private static Result getMutateRowResult(RegionActionResult actionResult, CellScanner cells)
-    throws IOException {
+  private static Result getMutateRowResult(ClientProtos.RegionActionResult actionResult,
+    CellScanner cells) throws IOException {
     if (actionResult.getProcessed()) {
       Result result = null;
       if (actionResult.getResultOrExceptionCount() > 0) {
         // Get the result of the Increment/Append operations from the first element of the
         // ResultOrException list
-        ResultOrException roe = actionResult.getResultOrException(0);
+        ClientProtos.ResultOrException roe = actionResult.getResultOrException(0);
         Result r = ProtobufUtil.toResult(roe.getResult(), cells);
         if (!r.isEmpty()) {
           r.setExists(true);
@@ -268,8 +255,8 @@ public final class ResponseConverter {
    * Wrap a throwable to an action result.
    * @return an action result builder
    */
-  public static ResultOrException.Builder buildActionResult(final Throwable t) {
-    ResultOrException.Builder builder = ResultOrException.newBuilder();
+  public static ClientProtos.ResultOrException.Builder buildActionResult(final Throwable t) {
+    ClientProtos.ResultOrException.Builder builder = ClientProtos.ResultOrException.newBuilder();
     if (t != null) builder.setException(buildException(t));
     return builder;
   }
@@ -278,15 +265,16 @@ public final class ResponseConverter {
    * Wrap a throwable to an action result.
    * @return an action result builder
    */
-  public static ResultOrException.Builder buildActionResult(final ClientProtos.Result r) {
-    ResultOrException.Builder builder = ResultOrException.newBuilder();
+  public static ClientProtos.ResultOrException.Builder
+    buildActionResult(final ClientProtos.Result r) {
+    ClientProtos.ResultOrException.Builder builder = ClientProtos.ResultOrException.newBuilder();
     if (r != null) builder.setResult(r);
     return builder;
   }
 
   /** Returns NameValuePair of the exception name to stringified version os exception. */
-  public static NameBytesPair buildException(final Throwable t) {
-    NameBytesPair.Builder parameterBuilder = NameBytesPair.newBuilder();
+  public static HBaseProtos.NameBytesPair buildException(final Throwable t) {
+    HBaseProtos.NameBytesPair.Builder parameterBuilder = HBaseProtos.NameBytesPair.newBuilder();
     parameterBuilder.setName(t.getClass().getName());
     parameterBuilder.setValue(ByteString.copyFromUtf8(StringUtils.stringifyException(t)));
     return parameterBuilder.build();
@@ -295,8 +283,10 @@ public final class ResponseConverter {
   /**
    * Builds a protocol buffer HasPermissionResponse
    */
-  public static HasPermissionResponse buildHasPermissionResponse(boolean hasPermission) {
-    HasPermissionResponse.Builder builder = HasPermissionResponse.newBuilder();
+  public static AccessControlProtos.HasPermissionResponse
+    buildHasPermissionResponse(boolean hasPermission) {
+    AccessControlProtos.HasPermissionResponse.Builder builder =
+      AccessControlProtos.HasPermissionResponse.newBuilder();
     builder.setHasPermission(hasPermission);
     return builder.build();
   }
@@ -309,7 +299,7 @@ public final class ResponseConverter {
    * @param proto the GetOnlineRegionResponse
    * @return the list of region info
    */
-  public static List<RegionInfo> getRegionInfos(final GetOnlineRegionResponse proto) {
+  public static List<RegionInfo> getRegionInfos(final AdminProtos.GetOnlineRegionResponse proto) {
     if (proto == null || proto.getRegionInfoCount() == 0) return null;
     return ProtobufUtil.getRegionInfos(proto);
   }
@@ -319,7 +309,7 @@ public final class ResponseConverter {
    * @param proto the CloseRegionResponse
    * @return the region close state
    */
-  public static boolean isClosed(final CloseRegionResponse proto) {
+  public static boolean isClosed(final AdminProtos.CloseRegionResponse proto) {
     if (proto == null || !proto.hasClosed()) return false;
     return proto.getClosed();
   }
@@ -328,10 +318,11 @@ public final class ResponseConverter {
    * A utility to build a GetServerInfoResponse.
    * @return the response
    */
-  public static GetServerInfoResponse buildGetServerInfoResponse(final ServerName serverName,
-    final int webuiPort) {
-    GetServerInfoResponse.Builder builder = GetServerInfoResponse.newBuilder();
-    ServerInfo.Builder serverInfoBuilder = ServerInfo.newBuilder();
+  public static AdminProtos.GetServerInfoResponse
+    buildGetServerInfoResponse(final ServerName serverName, final int webuiPort) {
+    AdminProtos.GetServerInfoResponse.Builder builder =
+      AdminProtos.GetServerInfoResponse.newBuilder();
+    AdminProtos.ServerInfo.Builder serverInfoBuilder = AdminProtos.ServerInfo.newBuilder();
     serverInfoBuilder.setServerName(ProtobufUtil.toServerName(serverName));
     if (webuiPort >= 0) {
       serverInfoBuilder.setWebuiPort(webuiPort);
@@ -344,9 +335,10 @@ public final class ResponseConverter {
    * A utility to build a GetOnlineRegionResponse.
    * @return the response
    */
-  public static GetOnlineRegionResponse
+  public static AdminProtos.GetOnlineRegionResponse
     buildGetOnlineRegionResponse(final List<RegionInfo> regions) {
-    GetOnlineRegionResponse.Builder builder = GetOnlineRegionResponse.newBuilder();
+    AdminProtos.GetOnlineRegionResponse.Builder builder =
+      AdminProtos.GetOnlineRegionResponse.newBuilder();
     for (RegionInfo region : regions) {
       builder.addRegionInfo(ProtobufUtil.toRegionInfo(region));
     }
@@ -357,24 +349,25 @@ public final class ResponseConverter {
    * Creates a response for the catalog scan request
    * @return A RunCatalogScanResponse
    */
-  public static RunCatalogScanResponse buildRunCatalogScanResponse(int numCleaned) {
-    return RunCatalogScanResponse.newBuilder().setScanResult(numCleaned).build();
+  public static MasterProtos.RunCatalogScanResponse buildRunCatalogScanResponse(int numCleaned) {
+    return MasterProtos.RunCatalogScanResponse.newBuilder().setScanResult(numCleaned).build();
   }
 
   /**
    * Creates a response for the catalog scan request
    * @return A EnableCatalogJanitorResponse
    */
-  public static EnableCatalogJanitorResponse buildEnableCatalogJanitorResponse(boolean prevValue) {
-    return EnableCatalogJanitorResponse.newBuilder().setPrevValue(prevValue).build();
+  public static MasterProtos.EnableCatalogJanitorResponse
+    buildEnableCatalogJanitorResponse(boolean prevValue) {
+    return MasterProtos.EnableCatalogJanitorResponse.newBuilder().setPrevValue(prevValue).build();
   }
 
   /**
    * Creates a response for the cleaner chore request
    * @return A RunCleanerChoreResponse
    */
-  public static RunCleanerChoreResponse buildRunCleanerChoreResponse(boolean ran) {
-    return RunCleanerChoreResponse.newBuilder().setCleanerChoreRan(ran).build();
+  public static MasterProtos.RunCleanerChoreResponse buildRunCleanerChoreResponse(boolean ran) {
+    return MasterProtos.RunCleanerChoreResponse.newBuilder().setCleanerChoreRan(ran).build();
   }
 
   // End utilities for Admin
@@ -383,9 +376,9 @@ public final class ResponseConverter {
    * Creates a response for the last flushed sequence Id request
    * @return A GetLastFlushedSequenceIdResponse
    */
-  public static GetLastFlushedSequenceIdResponse
-    buildGetLastFlushedSequenceIdResponse(RegionStoreSequenceIds ids) {
-    return GetLastFlushedSequenceIdResponse.newBuilder()
+  public static RegionServerStatusProtos.GetLastFlushedSequenceIdResponse
+    buildGetLastFlushedSequenceIdResponse(ClusterStatusProtos.RegionStoreSequenceIds ids) {
+    return RegionServerStatusProtos.GetLastFlushedSequenceIdResponse.newBuilder()
       .setLastFlushedSequenceId(ids.getLastFlushedSequenceId())
       .addAllStoreLastFlushedSequenceId(ids.getStoreSequenceIdList()).build();
   }
@@ -396,8 +389,7 @@ public final class ResponseConverter {
    * @param controller the controller instance provided by the client when calling the service
    * @param ioe        the exception encountered
    */
-  public static void setControllerException(com.google.protobuf.RpcController controller,
-    IOException ioe) {
+  public static void setControllerException(RpcController controller, IOException ioe) {
     if (controller != null) {
       if (controller instanceof ServerRpcController) {
         ((ServerRpcController) controller).setFailedOn(ioe);
@@ -428,7 +420,7 @@ public final class ResponseConverter {
   /**
    * Create Results from the cells using the cells meta data.
    */
-  public static Result[] getResults(CellScanner cellScanner, ScanResponse response)
+  public static Result[] getResults(CellScanner cellScanner, ClientProtos.ScanResponse response)
     throws IOException {
     if (response == null) return null;
     // If cellscanner, then the number of Results to return is the count of elements in the
@@ -476,16 +468,16 @@ public final class ResponseConverter {
     return results;
   }
 
-  public static Map<String, Long> getScanMetrics(ScanResponse response) {
+  public static Map<String, Long> getScanMetrics(ClientProtos.ScanResponse response) {
     Map<String, Long> metricMap = new HashMap<>();
     if (response == null || !response.hasScanMetrics()) {
       return metricMap;
     }
 
-    ScanMetrics metrics = response.getScanMetrics();
+    MapReduceProtos.ScanMetrics metrics = response.getScanMetrics();
     int numberOfMetrics = metrics.getMetricsCount();
     for (int i = 0; i < numberOfMetrics; i++) {
-      NameInt64Pair metricPair = metrics.getMetrics(i);
+      HBaseProtos.NameInt64Pair metricPair = metrics.getMetrics(i);
       if (metricPair != null) {
         String name = metricPair.getName();
         Long value = metricPair.getValue();

@@ -19,8 +19,6 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import static org.junit.Assert.assertEquals;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.ServiceException;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -32,7 +30,6 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ColumnAggregationProtos;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.testclassification.CoprocessorTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -44,6 +41,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
+
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ColumnAggregationProtos;
 
 @Category({ CoprocessorTests.class, MediumTests.class })
 public class TestCoprocessorTableEndpoint {

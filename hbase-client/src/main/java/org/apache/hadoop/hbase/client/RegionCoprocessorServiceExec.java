@@ -17,12 +17,12 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Message;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.common.base.Objects;
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 /**
  * Represents a coprocessor service method execution against a single region. While coprocessor

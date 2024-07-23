@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <!--
   /**
    * Licensed to the Apache Software Foundation (ASF) under one
@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache.hbase</groupId>
     <artifactId>hbase-build-configuration</artifactId>
-    <version>${revision}</version>
+    <version>2.5.10-sfdc-1.0.0-SNAPSHOT</version>
     <relativePath>../hbase-build-configuration</relativePath>
   </parent>
 
@@ -35,6 +35,10 @@
     <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
       <artifactId>hbase-shaded-protobuf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-protocol-shaded</artifactId>
     </dependency>
     <!-- Intra-project dependencies -->
     <dependency>
@@ -74,14 +78,6 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-protocol-shaded</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-protocol</artifactId>
-    </dependency>
     <!-- General dependencies -->
     <dependency>
       <groupId>com.github.stephenc.findbugs</groupId>
@@ -110,16 +106,38 @@
       <artifactId>hbase-shaded-miscellaneous</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
       <artifactId>hbase-shaded-netty</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-http</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-io</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+          </exclusion>
+        </exclusions>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
@@ -154,18 +172,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
+      <groupId>ch.qos.reload4j</groupId>
+      <artifactId>reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -231,14 +244,12 @@
       </properties>
     </profile>
 
-    <!-- profile for building against Hadoop 2.x.  This is the default -->
     <profile>
       <id>hadoop-2.0</id>
       <activation>
         <property>
-          <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
-          <!--h2-->
-          <name>!hadoop.profile</name>
+          <name>hadoop.profile</name>
+          <value>2.0</value>
         </property>
       </activation>
       <dependencies>
@@ -295,16 +306,11 @@
       </dependencies>
     </profile>
 
-    <!--
-      profile for building against Hadoop 3.0.x. Activate using:
-       mvn -Dhadoop.profile=3.0
-    -->
     <profile>
       <id>hadoop-3.0</id>
       <activation>
         <property>
-          <name>hadoop.profile</name>
-          <value>3.0</value>
+          <name>!hadoop.profile</name>
         </property>
       </activation>
       <dependencies>

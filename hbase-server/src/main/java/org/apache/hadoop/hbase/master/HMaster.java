@@ -24,8 +24,6 @@ import static org.apache.hadoop.hbase.master.cleaner.HFileCleaner.CUSTOM_POOL_SI
 import static org.apache.hadoop.hbase.util.DNS.MASTER_HOSTNAME_KEY;
 
 import com.google.errorprone.annotations.RestrictedApi;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Service;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
@@ -254,6 +252,8 @@ import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
 import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
 import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
 import org.apache.hbase.thirdparty.com.google.common.io.Closeables;
+import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 import org.apache.hbase.thirdparty.org.eclipse.jetty.server.Server;
 import org.apache.hbase.thirdparty.org.eclipse.jetty.server.ServerConnector;
 import org.apache.hbase.thirdparty.org.eclipse.jetty.servlet.ServletHolder;

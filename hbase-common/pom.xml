@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <!--
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -23,22 +23,13 @@
   <parent>
     <groupId>org.apache.hbase</groupId>
     <artifactId>hbase-build-configuration</artifactId>
-    <version>${revision}</version>
+    <version>2.5.10-sfdc-1.0.0-SNAPSHOT</version>
     <relativePath>../hbase-build-configuration</relativePath>
   </parent>
 
   <artifactId>hbase-common</artifactId>
   <name>Apache HBase - Common</name>
   <description>Common functionality for HBase</description>
-
-  <properties>
-    <!--
-    During build, one can override this property if they want to influence the
-    version stamped in the generated Version.java and hbase-default.xml. This has
-    implications for various version-related guardrails so care should be taken.
-    -->
-    <versioninfo.version>${project.version}</versioninfo.version>
-  </properties>
 
   <dependencies>
     <dependency>
@@ -60,6 +51,10 @@
     <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
       <artifactId>hbase-shaded-miscellaneous</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase.thirdparty</groupId>
+      <artifactId>hbase-shaded-protobuf</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
@@ -91,10 +86,6 @@
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
     </dependency>
     <!-- tracing Dependencies -->
     <dependency>
@@ -141,18 +132,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
+      <groupId>ch.qos.reload4j</groupId>
+      <artifactId>reload4j</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -209,7 +195,7 @@
             <phase>process-resources</phase>
             <configuration>
               <target>
-                <replace file="${project.build.outputDirectory}/hbase-default.xml" token="@@@VERSION@@@" value="${versioninfo.version}"/>
+                <replace file="${project.build.outputDirectory}/hbase-default.xml" token="@@@VERSION@@@" value="${project.version}"/>
               </target>
             </configuration>
           </execution>
@@ -225,7 +211,7 @@
                 <property location="${project.build.directory}/generated-sources" name="generated.sources"/>
 
                 <exec executable="bash" failonerror="true">
-                  <arg line="${basedir}/src/saveVersion.sh ${versioninfo.version} ${generated.sources}/java"/>
+                  <arg line="${basedir}/src/saveVersion.sh ${project.version} ${generated.sources}/java"/>
                 </exec>
               </target>
             </configuration>
@@ -269,40 +255,6 @@
   </build>
 
   <profiles>
-    <!-- Needs to make the profile in apache parent pom -->
-    <profile>
-      <id>apache-release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-resources-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>license-javadocs</id>
-                <goals>
-                  <goal>copy-resources</goal>
-                </goals>
-                <phase>prepare-package</phase>
-                <configuration>
-                  <outputDirectory>${project.build.directory}/apidocs</outputDirectory>
-                  <resources>
-                    <resource>
-                      <directory>src/main/javadoc/META-INF/</directory>
-                      <targetPath>META-INF/</targetPath>
-                      <includes>
-                        <include>NOTICE</include>
-                      </includes>
-                      <filtering>true</filtering>
-                    </resource>
-                  </resources>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
     <!-- Skip the tests in this module -->
     <profile>
       <id>skipCommonTests</id>
@@ -317,14 +269,12 @@
       </properties>
     </profile>
 
-    <!-- profile for building against Hadoop 2.x.  This is the default -->
     <profile>
       <id>hadoop-2.0</id>
       <activation>
         <property>
-          <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
-          <!--h2-->
-          <name>!hadoop.profile</name>
+          <name>hadoop.profile</name>
+          <value>2.0</value>
         </property>
       </activation>
       <dependencies>
@@ -360,16 +310,11 @@
       </build>
     </profile>
 
-    <!--
-      profile for building against Hadoop 3.0.x. Activate using:
-       mvn -Dhadoop.profile=3.0
-    -->
     <profile>
       <id>hadoop-3.0</id>
       <activation>
         <property>
-          <name>hadoop.profile</name>
-          <value>3.0</value>
+          <name>!hadoop.profile</name>
         </property>
       </activation>
       <dependencies>

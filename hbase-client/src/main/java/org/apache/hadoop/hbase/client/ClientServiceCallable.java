@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 
@@ -46,12 +47,12 @@ public abstract class ClientServiceCallable<T>
 
   // Below here are simple methods that contain the stub and the rpcController.
   protected ClientProtos.GetResponse doGet(ClientProtos.GetRequest request)
-    throws org.apache.hbase.thirdparty.com.google.protobuf.ServiceException {
+    throws ServiceException {
     return getStub().get(getRpcController(), request);
   }
 
   protected ClientProtos.MutateResponse doMutate(ClientProtos.MutateRequest request)
-    throws org.apache.hbase.thirdparty.com.google.protobuf.ServiceException {
+    throws ServiceException {
     return getStub().mutate(getRpcController(), request);
   }
 }

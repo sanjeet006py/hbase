@@ -1,0 +1,4 @@
+- source_branch: 2.5.10-sfdc-13
+  targets:  
+  - target_branch: 2.5.10-sfdc-12
+    auto_merge: false

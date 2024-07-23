@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase.client;
 
 import static org.apache.hadoop.hbase.util.FutureUtils.addListener;
 
-import com.google.protobuf.RpcChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -52,6 +51,7 @@ import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
 
 /**
  * The asynchronous administrative API for HBase.

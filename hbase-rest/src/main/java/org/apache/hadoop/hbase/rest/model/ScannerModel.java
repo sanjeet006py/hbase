@@ -18,9 +18,6 @@
 package org.apache.hadoop.hbase.rest.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.Message;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -72,15 +69,20 @@ import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
 import org.apache.hadoop.hbase.rest.RestUtil;
-import org.apache.hadoop.hbase.rest.protobuf.generated.ScannerMessage.Scanner;
 import org.apache.hadoop.hbase.security.visibility.Authorizations;
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
+import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
+import org.apache.hbase.thirdparty.com.google.protobuf.CodedInputStream;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import org.apache.hbase.thirdparty.javax.ws.rs.core.MediaType;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.rest.protobuf.generated.ScannerMessage.Scanner;
 
 /**
  * A representation of Scanner parameters.
@@ -950,13 +952,13 @@ public class ScannerModel implements ProtobufMessageHandler, Serializable {
   public Message messageFromObject() {
     Scanner.Builder builder = Scanner.newBuilder();
     if (!Bytes.equals(startRow, HConstants.EMPTY_START_ROW)) {
-      builder.setStartRow(ByteStringer.wrap(startRow));
+      builder.setStartRow(UnsafeByteOperations.unsafeWrap(startRow));
     }
     if (!Bytes.equals(endRow, HConstants.EMPTY_START_ROW)) {
-      builder.setEndRow(ByteStringer.wrap(endRow));
+      builder.setEndRow(UnsafeByteOperations.unsafeWrap(endRow));
     }
     for (byte[] column : columns) {
-      builder.addColumns(ByteStringer.wrap(column));
+      builder.addColumns(UnsafeByteOperations.unsafeWrap(column));
     }
     if (startTime != 0) {
       builder.setStartTime(startTime);

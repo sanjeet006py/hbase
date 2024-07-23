@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.protobuf.Message;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +27,8 @@ import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 
 /**
  * Base class for RowProcessor with some default implementations.

@@ -32,14 +32,15 @@ import java.util.function.Consumer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.AsyncAdmin;
 import org.apache.hadoop.hbase.client.AsyncConnection;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
-import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecService;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecRequest;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecResponse;
+import org.apache.hadoop.hbase.shaded.coprocessor.protobuf.generated.ShellExecEndpoint.ShellExecService;
 
 /**
  * Test for the {@link ShellExecEndpointCoprocessor}.

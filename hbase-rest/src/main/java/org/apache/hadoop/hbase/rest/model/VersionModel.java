@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hbase.rest.model;
 
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.Message;
 import java.io.IOException;
 import java.io.Serializable;
 import javax.servlet.ServletContext;
@@ -27,10 +25,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
 import org.apache.hadoop.hbase.rest.RESTServlet;
 import org.apache.hadoop.hbase.rest.RestUtil;
-import org.apache.hadoop.hbase.rest.protobuf.generated.VersionMessage.Version;
 import org.apache.yetus.audience.InterfaceAudience;
 
+import org.apache.hbase.thirdparty.com.google.protobuf.CodedInputStream;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
 import org.apache.hbase.thirdparty.org.glassfish.jersey.servlet.ServletContainer;
+
+import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.shaded.rest.protobuf.generated.VersionMessage.Version;
 
 /**
  * A representation of the collection of versions of the REST gateway software components.

@@ -165,8 +165,7 @@ public class ShadedAccessControlUtil {
       ret.setType(AccessControlProtos.Permission.Type.Namespace);
       AccessControlProtos.NamespacePermission.Builder builder =
         AccessControlProtos.NamespacePermission.newBuilder();
-      builder.setNamespaceName(org.apache.hbase.thirdparty.com.google.protobuf.ByteString
-        .copyFromUtf8(nsPerm.getNamespace()));
+      builder.setNamespaceName(ByteString.copyFromUtf8(nsPerm.getNamespace()));
       Permission.Action[] actions = perm.getActions();
       if (actions != null) {
         for (Permission.Action a : actions) {

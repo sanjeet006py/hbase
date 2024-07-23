@@ -21,7 +21,6 @@ import static org.apache.hadoop.hbase.AuthUtil.toGroupEntry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.protobuf.BlockingRpcChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,6 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.ObserverContextImpl;
 import org.apache.hadoop.hbase.ipc.NettyRpcClientConfigHelper;
-import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -59,6 +57,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hbase.thirdparty.com.google.common.collect.ListMultimap;
+import org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel;
+
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos.AccessControlService;
 
 @Category({ SecurityTests.class, MediumTests.class })
 public class TestNamespaceCommands extends SecureTestUtil {

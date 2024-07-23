@@ -163,6 +163,11 @@ public class RegionCoprocessorHost
     }
 
     @Override
+    public RegionServerServices getRegionServerServices() {
+      return services;
+    }
+
+    @Override
     public void shutdown() {
       super.shutdown();
       MetricsCoprocessor.removeRegistry(this.metricRegistry);

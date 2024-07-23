@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.metrics.MetricRegistry;
 import org.apache.hadoop.hbase.regionserver.OnlineRegions;
 import org.apache.hadoop.hbase.regionserver.Region;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 
@@ -50,6 +51,9 @@ public interface RegionCoprocessorEnvironment extends CoprocessorEnvironment<Reg
 
   /** Returns Hosting Server's ServerName */
   ServerName getServerName();
+
+  /** @return reference to the region server services */
+  RegionServerServices getRegionServerServices();
 
   /**
    * Returns the hosts' Connection to the Cluster. <b>Do not close! This is a shared connection with

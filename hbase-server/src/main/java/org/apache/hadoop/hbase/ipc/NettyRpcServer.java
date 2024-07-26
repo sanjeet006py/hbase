@@ -64,7 +64,6 @@ import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
 import org.apache.hbase.thirdparty.io.netty.channel.ServerChannel;
 import org.apache.hbase.thirdparty.io.netty.channel.group.ChannelGroup;
 import org.apache.hbase.thirdparty.io.netty.channel.group.DefaultChannelGroup;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.FixedLengthFrameDecoder;
 import org.apache.hbase.thirdparty.io.netty.handler.ssl.OptionalSslHandler;
 import org.apache.hbase.thirdparty.io.netty.handler.ssl.SslContext;
 import org.apache.hbase.thirdparty.io.netty.handler.ssl.SslHandler;
@@ -128,17 +127,19 @@ public class NettyRpcServer extends RpcServer {
         protected void initChannel(Channel ch) throws Exception {
           ch.config().setAllocator(channelAllocator);
           ChannelPipeline pipeline = ch.pipeline();
-          FixedLengthFrameDecoder preambleDecoder = new FixedLengthFrameDecoder(6);
-          preambleDecoder.setSingleDecode(true);
+
+          NettyServerRpcConnection conn = createNettyServerRpcConnection(ch);
 
           if (conf.getBoolean(HBASE_SERVER_NETTY_TLS_ENABLED, false)) {
-            initSSL(pipeline, conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT, true));
+            initSSL(pipeline, conn, conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT, true));
           }
-          pipeline.addLast("preambleDecoder", preambleDecoder);
-          pipeline.addLast("preambleHandler", createNettyRpcServerPreambleHandler());
-          pipeline.addLast("frameDecoder", new NettyRpcFrameDecoder(maxRequestSize));
-          pipeline.addLast("decoder", new NettyRpcServerRequestDecoder(allChannels, metrics));
-          pipeline.addLast("encoder", new NettyRpcServerResponseEncoder(metrics));
+          pipeline
+            .addLast(NettyRpcServerPreambleHandler.DECODER_NAME,
+              NettyRpcServerPreambleHandler.createDecoder())
+            .addLast(new NettyRpcServerPreambleHandler(NettyRpcServer.this, conn))
+            // We need NettyRpcServerResponseEncoder here because NettyRpcServerPreambleHandler may
+            // send RpcResponse to client.
+            .addLast(NettyRpcServerResponseEncoder.NAME, new NettyRpcServerResponseEncoder(metrics));
         }
       });
     try {
@@ -181,9 +182,10 @@ public class NettyRpcServer extends RpcServer {
     }
   }
 
+  // will be overridden in tests
   @InterfaceAudience.Private
-  protected NettyRpcServerPreambleHandler createNettyRpcServerPreambleHandler() {
-    return new NettyRpcServerPreambleHandler(NettyRpcServer.this);
+  protected NettyServerRpcConnection createNettyServerRpcConnection(Channel channel) {
+    return new NettyServerRpcConnection(NettyRpcServer.this, channel);
   }
 
   @Override
@@ -267,7 +269,7 @@ public class NettyRpcServer extends RpcServer {
     return call(fakeCall, status);
   }
 
-  private void initSSL(ChannelPipeline p, boolean supportPlaintext)
+  private void initSSL(ChannelPipeline p, NettyServerRpcConnection conn, boolean supportPlaintext)
     throws X509Exception, IOException {
     SslContext nettySslContext = getSslContext();
 
@@ -302,8 +304,22 @@ public class NettyRpcServer extends RpcServer {
       sslHandler.setWrapDataSize(
         conf.getInt(HBASE_SERVER_NETTY_TLS_WRAP_SIZE, DEFAULT_HBASE_SERVER_NETTY_TLS_WRAP_SIZE));
 
+      sslHandler.handshakeFuture()
+        .addListener(future -> sslHandshakeCompleteHandler(conn, sslHandler, remoteAddress, future.isSuccess()));
+
       p.addLast("ssl", sslHandler);
       LOG.debug("SSL handler added for channel: {}", p.channel());
+    }
+  }
+
+  static void sslHandshakeCompleteHandler(NettyServerRpcConnection conn, SslHandler sslHandler,
+    SocketAddress remoteAddress, boolean success) {
+    if (success) {
+      RpcServer.AUDITLOG.info(RpcServer.AUTH_SUCCESSFUL_FOR + " SSL connection from "
+        + remoteAddress);
+    } else {
+      RpcServer.AUDITLOG.info(RpcServer.AUTH_FAILED_FOR + " SSL connection from "
+        + remoteAddress);
     }
   }
 

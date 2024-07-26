@@ -33,7 +33,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -53,6 +52,7 @@ import io.opentelemetry.sdk.testing.junit4.OpenTelemetryRule;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -65,14 +65,18 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MatcherPredicate;
+import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.ipc.RpcServer.BlockingServiceAndInterface;
+import org.apache.hadoop.hbase.nio.ByteBuff;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.util.StringUtils;
 import org.hamcrest.Matcher;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,19 +104,30 @@ public abstract class AbstractTestIPC {
   private static final KeyValue CELL = new KeyValue(CELL_BYTES, CELL_BYTES, CELL_BYTES, CELL_BYTES);
 
   protected static final Configuration CONF = HBaseConfiguration.create();
-  static {
-    // Set the default to be the old SimpleRpcServer. Subclasses test it and netty.
-    CONF.set(RpcServerFactory.CUSTOM_RPC_SERVER_IMPL_CONF_KEY, SimpleRpcServer.class.getName());
+
+  protected RpcServer createRpcServer(Server server, String name,
+    List<BlockingServiceAndInterface> services, InetSocketAddress bindAddress, Configuration conf,
+    RpcScheduler scheduler) throws IOException {
+    return RpcServerFactory.createRpcServer(server, name, services, bindAddress, conf, scheduler);
   }
 
-  protected abstract RpcServer createRpcServer(final String name,
-    final List<BlockingServiceAndInterface> services, final InetSocketAddress bindAddress,
-    Configuration conf, RpcScheduler scheduler) throws IOException;
+  private RpcServer createRpcServer(String name, List<BlockingServiceAndInterface> services,
+    InetSocketAddress bindAddress, Configuration conf, RpcScheduler scheduler) throws IOException {
+    return createRpcServer(null, name, services, bindAddress, conf, scheduler);
+  }
 
   protected abstract AbstractRpcClient<?> createRpcClientNoCodec(Configuration conf);
 
   @Rule
   public OpenTelemetryRule traceRule = OpenTelemetryRule.create();
+
+  @Parameter(0)
+  public Class<? extends RpcServer> rpcServerImpl;
+
+  @Before
+  public void setUpBeforeTest() {
+    CONF.setClass(RpcServerFactory.CUSTOM_RPC_SERVER_IMPL_CONF_KEY, rpcServerImpl, RpcServer.class);
+  }
 
   /**
    * Ensure we do not HAVE TO HAVE a codec.
@@ -329,9 +344,43 @@ public abstract class AbstractTestIPC {
     }
   }
 
-  protected abstract RpcServer createTestFailingRpcServer(final String name,
+  private static class FailingSimpleRpcServer extends SimpleRpcServer {
+
+    FailingSimpleRpcServer(Server server, String name,
+      List<RpcServer.BlockingServiceAndInterface> services, InetSocketAddress bindAddress,
+      Configuration conf, RpcScheduler scheduler) throws IOException {
+      super(server, name, services, bindAddress, conf, scheduler, true);
+    }
+
+    final class FailingConnection extends SimpleServerRpcConnection {
+      private FailingConnection(FailingSimpleRpcServer rpcServer, SocketChannel channel,
+        long lastContact) {
+        super(rpcServer, channel, lastContact);
+      }
+
+      @Override
+      public void processRequest(ByteBuff buf) throws IOException, InterruptedException {
+        // this will throw exception after the connection header is read, and an RPC is sent
+        // from client
+        throw new DoNotRetryIOException("Failing for test");
+      }
+    }
+
+    @Override
+    protected SimpleServerRpcConnection getConnection(SocketChannel channel, long time) {
+      return new FailingConnection(this, channel, time);
+    }
+  }
+
+  protected RpcServer createTestFailingRpcServer(final String name,
     final List<BlockingServiceAndInterface> services, final InetSocketAddress bindAddress,
-    Configuration conf, RpcScheduler scheduler) throws IOException;
+    Configuration conf, RpcScheduler scheduler) throws IOException {
+    if (rpcServerImpl.equals(NettyRpcServer.class)) {
+      return new FailingNettyRpcServer(null, name, services, bindAddress, conf, scheduler);
+    } else {
+      return new FailingSimpleRpcServer(null, name, services, bindAddress, conf, scheduler);
+    }
+  }
 
   /** Tests that the connection closing is handled by the client with outstanding RPC calls */
   @Test
@@ -551,21 +600,36 @@ public abstract class AbstractTestIPC {
 
   protected abstract AbstractRpcClient<?> createBadAuthRpcClient(Configuration conf);
 
+  private IOException doBadPreableHeaderCall(BlockingInterface stub) {
+    ServiceException se = assertThrows(ServiceException.class,
+      () -> stub.echo(null, EchoRequestProto.newBuilder().setMessage("hello").build()));
+    return ProtobufUtil.handleRemoteException(se);
+  }
+
   @Test
-  public void testBadPreambleHeader() throws IOException, ServiceException {
+  public void testBadPreambleHeader() throws Exception {
     Configuration clientConf = new Configuration(CONF);
     RpcServer rpcServer = createRpcServer("testRpcServer", Collections.emptyList(),
       new InetSocketAddress("localhost", 0), CONF, new FifoRpcScheduler(CONF, 1));
     try (AbstractRpcClient<?> client = createBadAuthRpcClient(clientConf)) {
       rpcServer.start();
       BlockingInterface stub = newBlockingStub(client, rpcServer.getListenerAddress());
-      ServiceException se = assertThrows(ServiceException.class,
-        () -> stub.echo(null, EchoRequestProto.newBuilder().setMessage("hello").build()));
-      IOException ioe = ProtobufUtil.handleRemoteException(se);
-      assertThat(ioe, instanceOf(BadAuthException.class));
-      assertThat(ioe.getMessage(), containsString("authName=unknown"));
+      BadAuthException error = null;
+      // for SimpleRpcServer, it is possible that we get a broken pipe before getting the
+      // BadAuthException, so we add some retries here, see HBASE-28417
+      for (int i = 0; i < 10; i++) {
+        IOException ioe = doBadPreableHeaderCall(stub);
+        if (ioe instanceof BadAuthException) {
+          error = (BadAuthException) ioe;
+          break;
+        }
+        Thread.sleep(100);
+      }
+      assertNotNull("Can not get expected BadAuthException", error);
+      assertThat(error.getMessage(), containsString("authName=unknown"));
     } finally {
       rpcServer.stop();
     }
   }
+
 }

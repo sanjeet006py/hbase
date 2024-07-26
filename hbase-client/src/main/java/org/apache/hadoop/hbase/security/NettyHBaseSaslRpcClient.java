@@ -40,21 +40,21 @@ public class NettyHBaseSaslRpcClient extends AbstractHBaseSaslRpcClient {
   private static final Logger LOG = LoggerFactory.getLogger(NettyHBaseSaslRpcClient.class);
 
   public NettyHBaseSaslRpcClient(Configuration conf, SaslClientAuthenticationProvider provider,
-    Token<? extends TokenIdentifier> token, InetAddress serverAddr, SecurityInfo securityInfo,
+    Token<? extends TokenIdentifier> token, InetAddress serverAddr, String serverPrincipal,
     boolean fallbackAllowed, String rpcProtection) throws IOException {
-    super(conf, provider, token, serverAddr, securityInfo, fallbackAllowed, rpcProtection);
+    super(conf, provider, token, serverAddr, serverPrincipal, fallbackAllowed, rpcProtection);
   }
 
-  public void setupSaslHandler(ChannelPipeline p) {
+  public void setupSaslHandler(ChannelPipeline p, String addAfter) {
     String qop = (String) saslClient.getNegotiatedProperty(Sasl.QOP);
     LOG.trace("SASL client context established. Negotiated QoP {}", qop);
     if (qop == null || "auth".equalsIgnoreCase(qop)) {
       return;
     }
     // add wrap and unwrap handlers to pipeline.
-    p.addFirst(new SaslWrapHandler(saslClient),
-      new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4),
-      new SaslUnwrapHandler(saslClient));
+    p.addAfter(addAfter, null, new SaslUnwrapHandler(saslClient::unwrap))
+      .addAfter(addAfter, null, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4))
+      .addAfter(addAfter, null, new SaslWrapHandler(saslClient::wrap));
   }
 
   public String getSaslQOP() {

@@ -18,14 +18,20 @@
 package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.MetricsConnection;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.net.Address;
+import org.apache.hadoop.hbase.security.AuthMethod;
+import org.apache.hadoop.hbase.security.SecurityConstants;
 import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.provider.SaslClientAuthenticationProvider;
@@ -33,6 +39,7 @@ import org.apache.hadoop.hbase.security.provider.SaslClientAuthenticationProvide
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -83,6 +90,12 @@ abstract class RpcConnection {
   protected long lastTouched;
 
   protected SaslClientAuthenticationProvider provider;
+
+  // Record the server principal which we have successfully authenticated with the remote server
+  // this is used to save the extra round trip with server when there are multiple candidate server
+  // principals for a given rpc service, like ClientMetaService.
+  // See HBASE-28321 for more details.
+  private String lastSucceededServerPrincipal;
 
   protected RpcConnection(Configuration conf, HashedWheelTimer timeoutTimer, ConnectionId remoteId,
     String clusterId, boolean isSecurityEnabled, Codec codec, CompressionCodec compressor,
@@ -193,6 +206,65 @@ abstract class RpcConnection {
       throw new UnknownHostException(remoteId.getAddress() + " could not be resolved");
     }
     return remoteAddr;
+  }
+
+  private static boolean useCanonicalHostname(Configuration conf) {
+    return !conf.getBoolean(
+      SecurityConstants.UNSAFE_HBASE_CLIENT_KERBEROS_HOSTNAME_DISABLE_REVERSEDNS,
+      SecurityConstants.DEFAULT_UNSAFE_HBASE_CLIENT_KERBEROS_HOSTNAME_DISABLE_REVERSEDNS);
+  }
+
+  private static String getHostnameForServerPrincipal(Configuration conf, InetAddress addr) {
+    final String hostname;
+    if (useCanonicalHostname(conf)) {
+      hostname = addr.getCanonicalHostName();
+      if (hostname.equals(addr.getHostAddress())) {
+        LOG.warn("Canonical hostname for SASL principal is the same with IP address: " + hostname
+          + ", " + addr.getHostName() + ". Check DNS configuration or consider "
+          + SecurityConstants.UNSAFE_HBASE_CLIENT_KERBEROS_HOSTNAME_DISABLE_REVERSEDNS + "=true");
+      }
+    } else {
+      hostname = addr.getHostName();
+    }
+
+    return hostname.toLowerCase();
+  }
+
+  private static String getServerPrincipal(Configuration conf, String serverKey, InetAddress server)
+      throws IOException {
+      String hostname = getHostnameForServerPrincipal(conf, server);
+      return SecurityUtil.getServerPrincipal(conf.get(serverKey), hostname);
+  }
+
+  protected final boolean isKerberosAuth() {
+    return provider.getSaslAuthMethod().getCode() == AuthMethod.KERBEROS.code;
+  }
+
+  protected final Set<String> getServerPrincipals() throws IOException {
+    // for authentication method other than kerberos, we do not need to know the server principal
+    if (!isKerberosAuth()) {
+      return Collections.singleton(HConstants.EMPTY_STRING);
+    }
+    // if we have successfully authenticated last time, just return the server principal we use last
+    // time
+    if (lastSucceededServerPrincipal != null) {
+      return Collections.singleton(lastSucceededServerPrincipal);
+    }
+    InetAddress server =
+      new InetSocketAddress(remoteId.address.getHostName(), remoteId.address.getPort())
+        .getAddress();
+    // Even if we have multiple config key in security info, it is still possible that we configured
+    // the same principal for them, so here we use a Set
+    Set<String> serverPrincipals = new TreeSet<>();
+    for (String serverPrincipalKey : securityInfo.getServerPrincipals()) {
+      serverPrincipals.add(getServerPrincipal(conf, serverPrincipalKey, server));
+    }
+    return serverPrincipals;
+  }
+
+  protected final void saslNegotiationDone(String serverPrincipal, boolean succeed) {
+    LOG.debug("sasl negotiation done with serverPrincipal = {}, succeed = {}", serverPrincipal,
+      succeed);
   }
 
   protected abstract void callTimeout(Call call);

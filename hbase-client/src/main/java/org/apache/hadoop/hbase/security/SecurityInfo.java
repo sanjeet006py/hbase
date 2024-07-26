@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.security;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -27,6 +29,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos;
+import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Maps RPC protocol interfaces to required configuration
@@ -74,18 +77,33 @@ public class SecurityInfo {
     return infos.get(serviceName);
   }
 
-  private final String serverPrincipal;
+  private final List<String> serverPrincipals;
   private final AuthenticationProtos.TokenIdentifier.Kind tokenKind;
 
   public SecurityInfo(String serverPrincipal, AuthenticationProtos.TokenIdentifier.Kind tokenKind) {
-    this.serverPrincipal = serverPrincipal;
+    this(tokenKind, serverPrincipal);
+  }
+
+  public SecurityInfo(AuthenticationProtos.TokenIdentifier.Kind tokenKind, String... serverPrincipal) {
+    Preconditions.checkArgument(serverPrincipal.length > 0);
     this.tokenKind = tokenKind;
+    this.serverPrincipals = Arrays.asList(serverPrincipal);
   }
 
+  /**
+   * Although this class is IA.Private, we leak this class in
+   * {@code SaslClientAuthenticationProvider}, so need to align with the deprecation cycle for that
+   * class.
+   * @deprecated Since 2.6.0, will be removed in 4.0.0. Use {@link #getServerPrincipals()} instead.
+   */
+  @Deprecated
   public String getServerPrincipal() {
-    return serverPrincipal;
+    return serverPrincipals.get(0);
   }
 
+  public List<String> getServerPrincipals() {
+    return serverPrincipals;
+  }
   public AuthenticationProtos.TokenIdentifier.Kind getTokenKind() {
     return tokenKind;
   }

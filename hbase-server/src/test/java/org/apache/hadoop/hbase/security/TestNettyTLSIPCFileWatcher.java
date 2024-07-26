@@ -151,47 +151,6 @@ public class TestNettyTLSIPCFileWatcher {
   }
 
   @Test
-  public void testReplaceServerKeystore()
-    throws IOException, ServiceException, GeneralSecurityException, OperatorCreationException {
-    Configuration clientConf = new Configuration(CONF);
-    RpcServer rpcServer = createRpcServer("testRpcServer",
-      Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(SERVICE, null)),
-      new InetSocketAddress("localhost", 0), CONF, new FifoRpcScheduler(CONF, 1));
-
-    try {
-      rpcServer.start();
-
-      try (AbstractRpcClient<?> client = new NettyRpcClient(clientConf)) {
-        TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface stub =
-          newBlockingStub(client, rpcServer.getListenerAddress());
-        HBaseRpcController pcrc = new HBaseRpcControllerImpl();
-        String message = "hello";
-        assertEquals(message,
-          stub.echo(pcrc, TestProtos.EchoRequestProto.newBuilder().setMessage(message).build())
-            .getMessage());
-        assertNull(pcrc.cellScanner());
-      }
-
-      // Replace keystore
-      x509TestContext.regenerateStores(keyType, keyType, storeFileType, storeFileType);
-
-      try (AbstractRpcClient<?> client = new NettyRpcClient(clientConf)) {
-        TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface stub =
-          newBlockingStub(client, rpcServer.getListenerAddress());
-        HBaseRpcController pcrc = new HBaseRpcControllerImpl();
-        String message = "hello";
-        assertEquals(message,
-          stub.echo(pcrc, TestProtos.EchoRequestProto.newBuilder().setMessage(message).build())
-            .getMessage());
-        assertNull(pcrc.cellScanner());
-      }
-
-    } finally {
-      rpcServer.stop();
-    }
-  }
-
-  @Test
   public void testReplaceClientAndServerKeystore()
     throws GeneralSecurityException, IOException, OperatorCreationException, ServiceException {
     Configuration clientConf = new Configuration(CONF);

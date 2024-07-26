@@ -38,6 +38,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.ArrayDeque;
 import java.util.Locale;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -406,13 +407,13 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
     }
   }
 
-  private boolean setupSaslConnection(final InputStream in2, final OutputStream out2)
-    throws IOException {
+  private boolean setupSaslConnection(final InputStream in2, final OutputStream out2,
+    String serverPrincipal) throws IOException {
     if (this.metrics != null) {
       this.metrics.incrNsLookups();
     }
     saslRpcClient = new HBaseSaslRpcClient(this.rpcClient.conf, provider, token,
-      socket.getInetAddress(), securityInfo, this.rpcClient.fallbackAllowed,
+      socket.getInetAddress(), serverPrincipal, this.rpcClient.fallbackAllowed,
       this.rpcClient.conf.get("hbase.rpc.protection",
         QualityOfProtection.AUTHENTICATION.name().toLowerCase(Locale.ROOT)),
       this.rpcClient.conf.getBoolean(CRYPTO_AES_ENABLED_KEY, CRYPTO_AES_ENABLED_DEFAULT));
@@ -433,7 +434,8 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
    * </p>
    */
   private void handleSaslConnectionFailure(final int currRetries, final int maxRetries,
-    final Exception ex, final UserGroupInformation user) throws IOException, InterruptedException {
+    final Exception ex, final UserGroupInformation user, final String serverPrincipal)
+    throws IOException, InterruptedException {
     closeSocket();
     user.doAs(new PrivilegedExceptionAction<Object>() {
       @Override
@@ -473,13 +475,29 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
           Thread.sleep(ThreadLocalRandom.current().nextInt(reloginMaxBackoff) + 1);
           return null;
         } else {
-          String msg =
-            "Failed to initiate connection for " + UserGroupInformation.getLoginUser().getUserName()
-              + " to " + securityInfo.getServerPrincipal();
+          String msg = "Failed to initiate connection for "
+            + UserGroupInformation.getLoginUser().getUserName() + " to " + serverPrincipal;
           throw new IOException(msg, ex);
         }
       }
     });
+  }
+
+  private void createStreams(InputStream inStream, OutputStream outStream) {
+    this.in = new DataInputStream(new BufferedInputStream(inStream));
+    this.out = new DataOutputStream(new BufferedOutputStream(outStream));
+  }
+
+  // choose the server principal to use
+  private String chooseServerPrincipal(InputStream inStream, OutputStream outStream)
+    throws IOException {
+    Set<String> serverPrincipals = getServerPrincipals();
+    if (serverPrincipals.size() == 1) {
+      return serverPrincipals.iterator().next();
+    }
+    // this means we use kerberos authentication and there are multiple server principal candidates,
+    // but we do not support this until 2.6
+    throw new IOException("Multiple server principals not supported until 2.6");
   }
 
   private void setupIOstreams() throws IOException {
@@ -509,28 +527,33 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
         InputStream inStream = NetUtils.getInputStream(socket);
         // This creates a socket with a write timeout. This timeout cannot be changed.
         OutputStream outStream = NetUtils.getOutputStream(socket, this.rpcClient.writeTO);
-        // Write out the preamble -- MAGIC, version, and auth to use.
-        writeConnectionHeaderPreamble(outStream);
+
         if (useSasl) {
-          final InputStream in2 = inStream;
-          final OutputStream out2 = outStream;
           UserGroupInformation ticket = provider.getRealUser(remoteId.ticket);
           boolean continueSasl;
           if (ticket == null) {
             throw new FatalConnectionException("ticket/user is null");
           }
+          String serverPrincipal = chooseServerPrincipal(inStream, outStream);
+          // Write out the preamble -- MAGIC, version, and auth to use.
+          writeConnectionHeaderPreamble(outStream);
           try {
+            final InputStream in2 = inStream;
+            final OutputStream out2 = outStream;
             continueSasl = ticket.doAs(new PrivilegedExceptionAction<Boolean>() {
               @Override
               public Boolean run() throws IOException {
-                return setupSaslConnection(in2, out2);
+                return setupSaslConnection(in2, out2, serverPrincipal);
               }
             });
           } catch (Exception ex) {
             ExceptionUtil.rethrowIfInterrupt(ex);
-            handleSaslConnectionFailure(numRetries++, reloginMaxRetries, ex, ticket);
+            saslNegotiationDone(serverPrincipal, false);
+            handleSaslConnectionFailure(numRetries++, reloginMaxRetries, ex, ticket,
+              serverPrincipal);
             continue;
           }
+          saslNegotiationDone(serverPrincipal, true);
           if (continueSasl) {
             // Sasl connect is successful. Let's set up Sasl i/o streams.
             inStream = saslRpcClient.getInputStream();
@@ -541,14 +564,15 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
             // reconnecting because regionserver may change its sasl config after restart.
             saslRpcClient = null;
           }
+        } else {
+          // Write out the preamble -- MAGIC, version, and auth to use.
+          writeConnectionHeaderPreamble(outStream);
         }
-        this.in = new DataInputStream(new BufferedInputStream(inStream));
-        this.out = new DataOutputStream(new BufferedOutputStream(outStream));
+        createStreams(inStream, outStream);
         // Now write out the connection header
         writeConnectionHeader();
         // process the response from server for connection header if necessary
         processResponseForConnectionHeader();
-
         break;
       }
     } catch (Throwable t) {
@@ -569,7 +593,7 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
     }
 
     // start the receiver thread after the socket connection has been set up
-    thread = new Thread(this, threadName + " (attempt: " + attempts.incrementAndGet() + ")");
+    thread = new Thread(this, threadName);
     thread.setDaemon(true);
     thread.start();
   }

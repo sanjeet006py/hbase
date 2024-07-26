@@ -26,6 +26,7 @@ import static org.apache.hadoop.hbase.ipc.IPCUtil.toIOE;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
@@ -157,7 +158,7 @@ class NettyRpcConnection extends RpcConnection {
     });
   }
 
-  private void established(Channel ch) throws IOException {
+  private void established(Channel ch) {
     assert eventLoop.inEventLoop();
     ch.pipeline()
       .addBefore(BufferCallBeforeInitHandler.NAME, null,
@@ -169,9 +170,13 @@ class NettyRpcConnection extends RpcConnection {
       .fireUserEventTriggered(BufferCallEvent.success());
   }
 
+  private void saslEstablished(Channel ch, String serverPrincipal) {
+    saslNegotiationDone(serverPrincipal, true);
+    established(ch);
+  }
+
   private boolean reloginInProgress;
 
-  @SuppressWarnings("FutureReturnValueIgnored")
   private void scheduleRelogin(Throwable error) {
     assert eventLoop.inEventLoop();
     if (error instanceof FallbackDisallowedException) {
@@ -202,36 +207,42 @@ class NettyRpcConnection extends RpcConnection {
     // fail all pending calls
     ch.pipeline().fireUserEventTriggered(BufferCallEvent.fail(e));
     shutdown0();
+    rpcClient.failedServers.addToFailedServers(remoteId.getAddress(), e);
   }
 
-  private void saslNegotiate(final Channel ch) {
+  private void saslFailInit(Channel ch, String serverPrincipal, IOException error) {
     assert eventLoop.inEventLoop();
+    saslNegotiationDone(serverPrincipal, false);
+    failInit(ch, error);
+  }
+
+  private void saslNegotiate(Channel ch, String serverPrincipal) {
+    assert eventLoop.inEventLoop();
+    NettyFutureUtils.safeWriteAndFlush(ch, connectionHeaderPreamble.retainedDuplicate());
     UserGroupInformation ticket = provider.getRealUser(remoteId.getTicket());
     if (ticket == null) {
-      failInit(ch, new FatalConnectionException("ticket/user is null"));
+      saslFailInit(ch, serverPrincipal, new FatalConnectionException("ticket/user is null"));
       return;
     }
     Promise<Boolean> saslPromise = ch.eventLoop().newPromise();
     final NettyHBaseSaslRpcClientHandler saslHandler;
     try {
       saslHandler = new NettyHBaseSaslRpcClientHandler(saslPromise, ticket, provider, token,
-        ((InetSocketAddress) ch.remoteAddress()).getAddress(), securityInfo,
+        ((InetSocketAddress) ch.remoteAddress()).getAddress(), serverPrincipal,
         rpcClient.fallbackAllowed, this.rpcClient.conf);
     } catch (IOException e) {
-      failInit(ch, e);
+      saslFailInit(ch, serverPrincipal, e);
       return;
     }
     ch.pipeline().addBefore(BufferCallBeforeInitHandler.NAME, null, new SaslChallengeDecoder())
-      .addBefore(BufferCallBeforeInitHandler.NAME, null, saslHandler);
+      .addBefore(BufferCallBeforeInitHandler.NAME, NettyHBaseSaslRpcClientHandler.HANDLER_NAME,
+        saslHandler);
     NettyFutureUtils.addListener(saslPromise, new FutureListener<Boolean>() {
 
       @Override
       public void operationComplete(Future<Boolean> future) throws Exception {
         if (future.isSuccess()) {
           ChannelPipeline p = ch.pipeline();
-          p.remove(SaslChallengeDecoder.class);
-          p.remove(NettyHBaseSaslRpcClientHandler.class);
-
           // check if negotiate with server for connection header is necessary
           if (saslHandler.isNeedProcessConnectionHeader()) {
             Promise<Boolean> connectionHeaderPromise = ch.eventLoop().newPromise();
@@ -255,26 +266,38 @@ class NettyRpcConnection extends RpcConnection {
                   p.remove(NettyHBaseRpcConnectionHeaderHandler.class);
                   // don't send connection header, NettyHBaseRpcConnectionHeaderHandler
                   // sent it already
-                  established(ch);
+                  saslEstablished(ch, serverPrincipal);
                 } else {
                   final Throwable error = future.cause();
                   scheduleRelogin(error);
-                  failInit(ch, toIOE(error));
+                  saslFailInit(ch, serverPrincipal, toIOE(error));
                 }
               }
             });
           } else {
             // send the connection header to server
-            NettyFutureUtils.safeWrite(ch, connectionHeaderWithLength.retainedDuplicate());
-            established(ch);
+            ch.write(connectionHeaderWithLength.retainedDuplicate());
+            saslEstablished(ch, serverPrincipal);
           }
         } else {
           final Throwable error = future.cause();
           scheduleRelogin(error);
-          failInit(ch, toIOE(error));
+          saslFailInit(ch, serverPrincipal, toIOE(error));
         }
       }
     });
+  }
+
+  private void saslNegotiate(Channel ch) throws IOException {
+    assert eventLoop.inEventLoop();
+    Set<String> serverPrincipals = getServerPrincipals();
+    if (serverPrincipals.size() == 1) {
+      saslNegotiate(ch, serverPrincipals.iterator().next());
+      return;
+    }
+    // this means we use kerberos authentication and there are multiple server principal candidates,
+    // not supported until 2.6
+    throw new IOException("Multiple server principal candidates are not supported");
   }
 
   private void connect() throws UnknownHostException {
@@ -306,13 +329,14 @@ class NettyRpcConnection extends RpcConnection {
       .addListener(new ChannelFutureListener() {
 
         private void succeed(Channel ch) throws IOException {
-          NettyFutureUtils.safeWriteAndFlush(ch, connectionHeaderPreamble.retainedDuplicate());
-          if (useSasl) {
-            saslNegotiate(ch);
-          } else {
-            // send the connection header to server
+          if (!useSasl) {
+            // BufferCallBeforeInitHandler will call ctx.flush when receiving the
+            // BufferCallEvent.success() event, so here we just use write for the below two messages
+            NettyFutureUtils.safeWrite(ch, connectionHeaderPreamble.retainedDuplicate());
             NettyFutureUtils.safeWrite(ch, connectionHeaderWithLength.retainedDuplicate());
             established(ch);
+          } else {
+            saslNegotiate(ch);
           }
         }
 
@@ -328,9 +352,6 @@ class NettyRpcConnection extends RpcConnection {
         public void operationComplete(ChannelFuture future) throws Exception {
           Channel ch = future.channel();
           if (!future.isSuccess()) {
-            IOException ex = toIOE(future.cause());
-            LOG.warn(
-              "Exception encountered while connecting to the server " + remoteId.getAddress(), ex);
             fail(ch, future.cause());
             return;
           }
@@ -375,7 +396,8 @@ class NettyRpcConnection extends RpcConnection {
             connect();
           }
           scheduleTimeoutTask(call);
-          NettyFutureUtils.addListener(channel.writeAndFlush(call), new ChannelFutureListener() {
+          channel.writeAndFlush(call).addListener(new ChannelFutureListener() {
+
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
               // Fail the call if we failed to write it out. This usually because the channel is

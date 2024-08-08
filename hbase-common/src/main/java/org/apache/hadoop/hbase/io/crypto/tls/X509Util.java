@@ -104,6 +104,9 @@ public final class X509Util {
     "hbase.server.netty.tls.verify.client.hostname";
   public static final String HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT =
     "hbase.server.netty.tls.supportplaintext";
+  /** If TLS authentication should be sufficient even when Kerberos authentication is enabled */
+  public static final String HBASE_SERVER_NETTY_TLS_SUFFICIENT =
+    "hbase.server.netty.tls.sufficient";
 
   /**
    * Set the SSL wrapSize for netty. This is only a maximum wrap size. Buffers smaller than this

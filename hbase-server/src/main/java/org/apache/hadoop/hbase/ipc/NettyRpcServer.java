@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.DEFAULT_HBASE_SERVER_NETTY_TLS_WRAP_SIZE;
 import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_ENABLED;
+import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_SUFFICIENT;
 import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT;
 import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_WRAP_SIZE;
 import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.TLS_CONFIG_REVERSE_DNS_LOOKUP_ENABLED;
@@ -131,7 +132,8 @@ public class NettyRpcServer extends RpcServer {
           NettyServerRpcConnection conn = createNettyServerRpcConnection(ch);
 
           if (conf.getBoolean(HBASE_SERVER_NETTY_TLS_ENABLED, false)) {
-            initSSL(pipeline, conn, conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT, true));
+            initSSL(pipeline, conn, conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT, true),
+              conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUFFICIENT, false));
           }
           pipeline
             .addLast(NettyRpcServerPreambleHandler.DECODER_NAME,
@@ -269,8 +271,8 @@ public class NettyRpcServer extends RpcServer {
     return call(fakeCall, status);
   }
 
-  private void initSSL(ChannelPipeline p, NettyServerRpcConnection conn, boolean supportPlaintext)
-    throws X509Exception, IOException {
+  private void initSSL(ChannelPipeline p, NettyServerRpcConnection conn, boolean supportPlaintext,
+    boolean isSufficient) throws X509Exception, IOException {
     SslContext nettySslContext = getSslContext();
 
     if (supportPlaintext) {
@@ -304,8 +306,8 @@ public class NettyRpcServer extends RpcServer {
       sslHandler.setWrapDataSize(
         conf.getInt(HBASE_SERVER_NETTY_TLS_WRAP_SIZE, DEFAULT_HBASE_SERVER_NETTY_TLS_WRAP_SIZE));
 
-      sslHandler.handshakeFuture()
-        .addListener(future -> sslHandshakeCompleteHandler(conn, sslHandler, remoteAddress, future.isSuccess()));
+      sslHandler.handshakeFuture().addListener(future -> sslHandshakeCompleteHandler(conn,
+        sslHandler, future.isSuccess(), remoteAddress, isSufficient));
 
       p.addLast("ssl", sslHandler);
       LOG.debug("SSL handler added for channel: {}", p.channel());
@@ -313,13 +315,19 @@ public class NettyRpcServer extends RpcServer {
   }
 
   static void sslHandshakeCompleteHandler(NettyServerRpcConnection conn, SslHandler sslHandler,
-    SocketAddress remoteAddress, boolean success) {
-    if (success) {
-      RpcServer.AUDITLOG.info(RpcServer.AUTH_SUCCESSFUL_FOR + " SSL connection from "
-        + remoteAddress);
+    boolean isSuccess, SocketAddress remoteAddress, boolean isSufficient) {
+    if (isSuccess) {
+      if (isSufficient) {
+        // If TLS will be sufficient, we will force the connection to use simple auth
+        conn.authenticateWithFallback = true;
+        RpcServer.AUDITLOG.info(
+          RpcServer.AUTH_SUCCESSFUL_FOR + "TLS connection from " + remoteAddress + "; sufficient");
+      } else {
+        RpcServer.AUDITLOG
+          .info(RpcServer.AUTH_SUCCESSFUL_FOR + "TLS connection from " + remoteAddress);
+      }
     } else {
-      RpcServer.AUDITLOG.info(RpcServer.AUTH_FAILED_FOR + " SSL connection from "
-        + remoteAddress);
+      RpcServer.AUDITLOG.info(RpcServer.AUTH_FAILED_FOR + "TLS connection from " + remoteAddress);
     }
   }
 

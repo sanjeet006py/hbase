@@ -120,6 +120,9 @@ abstract class ServerRpcConnection implements Closeable {
   protected boolean useSasl;
   protected HBaseSaslRpcServer saslServer;
 
+  // force authentication with fallback
+  protected boolean authenticateWithFallback;
+
   // was authentication allowed with a fallback to simple auth
   protected boolean authenticatedWithFallback;
 
@@ -715,7 +718,9 @@ abstract class ServerRpcConnection implements Closeable {
         return false;
       }
     }
-    if (!this.rpcServer.isSecurityEnabled && !isSimpleAuthentication()) {
+    if (
+      (!this.rpcServer.isSecurityEnabled || authenticateWithFallback) && !isSimpleAuthentication()
+    ) {
       doRawSaslReply(SaslStatus.SUCCESS, new IntWritable(SaslUtil.SWITCH_TO_SIMPLE_AUTH), null,
         null);
       provider = saslProviders.getSimpleProvider();
@@ -723,6 +728,11 @@ abstract class ServerRpcConnection implements Closeable {
       // should ignore it. Both client and server should fall back
       // to simple auth from now on.
       skipInitialSaslHandshake = true;
+      if (authenticateWithFallback) {
+        // account for the forced fallback authentication
+        this.rpcServer.metrics.authenticationFallback();
+        authenticatedWithFallback = true;
+      }
     }
     useSasl = !(provider instanceof SimpleSaslServerAuthenticationProvider);
     return true;

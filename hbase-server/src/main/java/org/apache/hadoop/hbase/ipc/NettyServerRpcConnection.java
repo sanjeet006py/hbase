@@ -41,11 +41,11 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.RequestHeader
  * @since 2.0.0
  */
 @InterfaceAudience.Private
-class NettyServerRpcConnection extends ServerRpcConnection {
+public class NettyServerRpcConnection extends ServerRpcConnection {
 
   final Channel channel;
 
-  NettyServerRpcConnection(NettyRpcServer rpcServer, Channel channel) {
+  public NettyServerRpcConnection(NettyRpcServer rpcServer, Channel channel) {
     super(rpcServer);
     this.channel = channel;
     rpcServer.allChannels.add(channel);

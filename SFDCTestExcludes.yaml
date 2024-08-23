@@ -38,3 +38,7 @@
   is_ut: true
 - suite: org.apache.hadoop.hbase.coprocessor.example.TestZooKeeperScanPolicyObserver
   is_ut: true
+- suite: org.apache.hadoop.hbase.io.hfile.TestCombinedBlockCache
+  is_ut: true
+  testcases:
+    - testCombinedBlockCacheStatsWithNoBlockType

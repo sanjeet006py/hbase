@@ -57,6 +57,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.ZKPermissionWatcher;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.Service;
@@ -65,10 +66,12 @@ public class MockNoopMasterServices implements MasterServices {
 
   private final Configuration conf;
   private final MetricsMaster metricsMaster;
+  private final long masterActiveTime;
 
   public MockNoopMasterServices(final Configuration conf) {
     this.conf = conf;
     this.metricsMaster = new MetricsMaster(new MetricsMasterWrapperImpl(mock(HMaster.class)));
+    this.masterActiveTime = EnvironmentEdgeManager.currentTime();
   }
 
   @Override
@@ -315,6 +318,11 @@ public class MockNoopMasterServices implements MasterServices {
   @Override
   public boolean isActiveMaster() {
     return true;
+  }
+
+  @Override
+  public long getMasterActiveTime() {
+    return masterActiveTime;
   }
 
   @Override

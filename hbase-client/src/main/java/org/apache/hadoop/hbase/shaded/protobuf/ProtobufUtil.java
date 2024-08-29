@@ -2990,11 +2990,13 @@ public final class ProtobufUtil {
 
   public static CloseRegionRequest buildCloseRegionRequest(ServerName server, byte[] regionName,
     ServerName destinationServer) {
-    return buildCloseRegionRequest(server, regionName, destinationServer, -1);
+    // this method is used when we are bypassing active HMaster, so we don't have procId or master
+    // active time.
+    return buildCloseRegionRequest(server, regionName, destinationServer, -1, -1);
   }
 
   public static CloseRegionRequest buildCloseRegionRequest(ServerName server, byte[] regionName,
-    ServerName destinationServer, long closeProcId) {
+    ServerName destinationServer, long closeProcId, long initiatingMasterActiveTime) {
     CloseRegionRequest.Builder builder = CloseRegionRequest.newBuilder();
     RegionSpecifier region =
       RequestConverter.buildRegionSpecifier(RegionSpecifierType.REGION_NAME, regionName);
@@ -3005,6 +3007,7 @@ public final class ProtobufUtil {
     if (server != null) {
       builder.setServerStartCode(server.getStartcode());
     }
+    builder.setInitiatingMasterActiveTime(initiatingMasterActiveTime);
     builder.setCloseProcId(closeProcId);
     return builder.build();
   }

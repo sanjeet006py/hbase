@@ -24,16 +24,12 @@ import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getPrincipalFo
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.loginKerberosPrincipal;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.setSecuredConfiguration;
 import static org.apache.hadoop.hbase.security.provider.SaslClientAuthenticationProviders.SELECTOR_KEY;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.either;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -49,7 +45,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.exceptions.ConnectionClosedException;
 import org.apache.hadoop.hbase.ipc.FallbackDisallowedException;
 import org.apache.hadoop.hbase.ipc.FifoRpcScheduler;
 import org.apache.hadoop.hbase.ipc.RpcClient;
@@ -192,7 +187,7 @@ public class AbstractTestSecureIPC {
       return new SaslClientAuthenticationProvider() {
         @Override
         public SaslClient createClient(Configuration conf, InetAddress serverAddr,
-          String serverPrincipal, Token<? extends TokenIdentifier> token, boolean fallbackAllowed,
+          SecurityInfo securityInfo, Token<? extends TokenIdentifier> token, boolean fallbackAllowed,
           Map<String, String> saslProps) throws IOException {
           final String s = conf.get(CANONICAL_HOST_NAME_KEY);
           if (s != null) {
@@ -206,7 +201,7 @@ public class AbstractTestSecureIPC {
             }
           }
 
-          return delegate.createClient(conf, serverAddr, serverPrincipal, token, fallbackAllowed,
+          return delegate.createClient(conf, serverAddr, securityInfo, token, fallbackAllowed,
             saslProps);
         }
 
@@ -380,8 +375,8 @@ public class AbstractTestSecureIPC {
    */
   private void callRpcService(User serverUser, User clientUser) throws Exception {
     SecurityInfo securityInfoMock = Mockito.mock(SecurityInfo.class);
-    Mockito.when(securityInfoMock.getServerPrincipals())
-      .thenReturn(Collections.singletonList(HBaseKerberosUtils.KRB_PRINCIPAL));
+    Mockito.when(securityInfoMock.getServerPrincipal())
+      .thenReturn(HBaseKerberosUtils.KRB_PRINCIPAL);
     SecurityInfo.addInfo("TestProtobufRpcProto", securityInfoMock);
 
     InetSocketAddress isa = new InetSocketAddress(HOST, 0);

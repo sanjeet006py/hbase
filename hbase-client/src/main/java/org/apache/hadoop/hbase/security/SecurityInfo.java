@@ -17,19 +17,17 @@
  */
 package org.apache.hadoop.hbase.security;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AuthenticationProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AuthenticationProtos.TokenIdentifier.Kind;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Maps RPC protocol interfaces to required configuration
@@ -41,23 +39,17 @@ public class SecurityInfo {
   // populate info for known services
   static {
     infos.put(AdminProtos.AdminService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
     infos.put(ClientProtos.ClientService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
-    infos.put(MasterProtos.MasterService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+    infos.put(MasterService.getDescriptor().getName(),
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
     infos.put(RegionServerStatusProtos.RegionServerStatusService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
     infos.put(MasterProtos.HbckService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
     infos.put(RegistryProtos.ClientMetaService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
-        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
     // NOTE: IF ADDING A NEW SERVICE, BE SURE TO UPDATE HBasePolicyProvider ALSO ELSE
     // new Service will not be found when all is Kerberized!!!!
   }
@@ -77,34 +69,19 @@ public class SecurityInfo {
     return infos.get(serviceName);
   }
 
-  private final List<String> serverPrincipals;
-  private final AuthenticationProtos.TokenIdentifier.Kind tokenKind;
+  private final String serverPrincipal;
+  private final Kind tokenKind;
 
-  public SecurityInfo(String serverPrincipal, AuthenticationProtos.TokenIdentifier.Kind tokenKind) {
-    this(tokenKind, serverPrincipal);
-  }
-
-  public SecurityInfo(AuthenticationProtos.TokenIdentifier.Kind tokenKind, String... serverPrincipal) {
-    Preconditions.checkArgument(serverPrincipal.length > 0);
+  public SecurityInfo(String serverPrincipal, Kind tokenKind) {
+    this.serverPrincipal = serverPrincipal;
     this.tokenKind = tokenKind;
-    this.serverPrincipals = Arrays.asList(serverPrincipal);
   }
 
-  /**
-   * Although this class is IA.Private, we leak this class in
-   * {@code SaslClientAuthenticationProvider}, so need to align with the deprecation cycle for that
-   * class.
-   * @deprecated Since 2.6.0, will be removed in 4.0.0. Use {@link #getServerPrincipals()} instead.
-   */
-  @Deprecated
   public String getServerPrincipal() {
-    return serverPrincipals.get(0);
+    return serverPrincipal;
   }
 
-  public List<String> getServerPrincipals() {
-    return serverPrincipals;
-  }
-  public AuthenticationProtos.TokenIdentifier.Kind getTokenKind() {
+  public Kind getTokenKind() {
     return tokenKind;
   }
 }

@@ -25,7 +25,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.Security;
-import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -115,8 +114,8 @@ public class TestSaslTlsIPCSufficiency {
     UGI = loginKerberosPrincipal(KEYTAB_FILE.getCanonicalPath(), PRINCIPAL);
     setSecuredConfiguration(util.getConfiguration());
     SecurityInfo securityInfoMock = Mockito.mock(SecurityInfo.class);
-    Mockito.when(securityInfoMock.getServerPrincipals())
-      .thenReturn(Collections.singletonList(HBaseKerberosUtils.KRB_PRINCIPAL));
+    Mockito.when(securityInfoMock.getServerPrincipal())
+      .thenReturn(HBaseKerberosUtils.KRB_PRINCIPAL);
     SecurityInfo.addInfo("TestProtobufRpcProto", securityInfoMock);
   }
 

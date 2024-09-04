@@ -63,15 +63,15 @@ public class HBaseSaslRpcClient extends AbstractHBaseSaslRpcClient {
   private boolean initStreamForCrypto;
 
   public HBaseSaslRpcClient(Configuration conf, SaslClientAuthenticationProvider provider,
-    Token<? extends TokenIdentifier> token, InetAddress serverAddr, String servicePrincipal,
+    Token<? extends TokenIdentifier> token, InetAddress serverAddr, SecurityInfo securityInfo,
     boolean fallbackAllowed) throws IOException {
-    super(conf, provider, token, serverAddr, servicePrincipal, fallbackAllowed);
+    super(conf, provider, token, serverAddr, securityInfo, fallbackAllowed);
   }
 
   public HBaseSaslRpcClient(Configuration conf, SaslClientAuthenticationProvider provider,
-    Token<? extends TokenIdentifier> token, InetAddress serverAddr, String servicePrincipal,
+    Token<? extends TokenIdentifier> token, InetAddress serverAddr, SecurityInfo securityInfo,
     boolean fallbackAllowed, String rpcProtection, boolean initStreamForCrypto) throws IOException {
-    super(conf, provider, token, serverAddr, servicePrincipal, fallbackAllowed, rpcProtection);
+    super(conf, provider, token, serverAddr, securityInfo, fallbackAllowed, rpcProtection);
     this.initStreamForCrypto = initStreamForCrypto;
   }
 

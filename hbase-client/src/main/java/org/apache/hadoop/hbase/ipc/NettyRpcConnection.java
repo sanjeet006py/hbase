@@ -26,7 +26,6 @@ import static org.apache.hadoop.hbase.ipc.IPCUtil.toIOE;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
@@ -170,8 +169,8 @@ class NettyRpcConnection extends RpcConnection {
       .fireUserEventTriggered(BufferCallEvent.success());
   }
 
-  private void saslEstablished(Channel ch, String serverPrincipal) {
-    saslNegotiationDone(serverPrincipal, true);
+  private void saslEstablished(Channel ch) {
+    saslNegotiationDone(true);
     established(ch);
   }
 
@@ -210,28 +209,28 @@ class NettyRpcConnection extends RpcConnection {
     rpcClient.failedServers.addToFailedServers(remoteId.getAddress(), e);
   }
 
-  private void saslFailInit(Channel ch, String serverPrincipal, IOException error) {
+  private void saslFailInit(Channel ch, IOException error) {
     assert eventLoop.inEventLoop();
-    saslNegotiationDone(serverPrincipal, false);
+    saslNegotiationDone(false);
     failInit(ch, error);
   }
 
-  private void saslNegotiate(Channel ch, String serverPrincipal) {
+  private void saslNegotiate(Channel ch) {
     assert eventLoop.inEventLoop();
     NettyFutureUtils.safeWriteAndFlush(ch, connectionHeaderPreamble.retainedDuplicate());
     UserGroupInformation ticket = provider.getRealUser(remoteId.getTicket());
     if (ticket == null) {
-      saslFailInit(ch, serverPrincipal, new FatalConnectionException("ticket/user is null"));
+      saslFailInit(ch, new FatalConnectionException("ticket/user is null"));
       return;
     }
     Promise<Boolean> saslPromise = ch.eventLoop().newPromise();
     final NettyHBaseSaslRpcClientHandler saslHandler;
     try {
       saslHandler = new NettyHBaseSaslRpcClientHandler(saslPromise, ticket, provider, token,
-        ((InetSocketAddress) ch.remoteAddress()).getAddress(), serverPrincipal,
+        ((InetSocketAddress) ch.remoteAddress()).getAddress(), securityInfo,
         rpcClient.fallbackAllowed, this.rpcClient.conf);
     } catch (IOException e) {
-      saslFailInit(ch, serverPrincipal, e);
+      saslFailInit(ch, e);
       return;
     }
     ch.pipeline().addBefore(BufferCallBeforeInitHandler.NAME, null, new SaslChallengeDecoder())
@@ -266,38 +265,26 @@ class NettyRpcConnection extends RpcConnection {
                   p.remove(NettyHBaseRpcConnectionHeaderHandler.class);
                   // don't send connection header, NettyHBaseRpcConnectionHeaderHandler
                   // sent it already
-                  saslEstablished(ch, serverPrincipal);
+                  saslEstablished(ch);
                 } else {
                   final Throwable error = future.cause();
                   scheduleRelogin(error);
-                  saslFailInit(ch, serverPrincipal, toIOE(error));
+                  saslFailInit(ch, toIOE(error));
                 }
               }
             });
           } else {
             // send the connection header to server
             ch.write(connectionHeaderWithLength.retainedDuplicate());
-            saslEstablished(ch, serverPrincipal);
+            saslEstablished(ch);
           }
         } else {
           final Throwable error = future.cause();
           scheduleRelogin(error);
-          saslFailInit(ch, serverPrincipal, toIOE(error));
+          saslFailInit(ch, toIOE(error));
         }
       }
     });
-  }
-
-  private void saslNegotiate(Channel ch) throws IOException {
-    assert eventLoop.inEventLoop();
-    Set<String> serverPrincipals = getServerPrincipals();
-    if (serverPrincipals.size() == 1) {
-      saslNegotiate(ch, serverPrincipals.iterator().next());
-      return;
-    }
-    // this means we use kerberos authentication and there are multiple server principal candidates,
-    // not supported until 2.6
-    throw new IOException("Multiple server principal candidates are not supported");
   }
 
   private void connect() throws UnknownHostException {

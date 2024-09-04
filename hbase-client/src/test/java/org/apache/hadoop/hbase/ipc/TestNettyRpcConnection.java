@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.net.Address;
+import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
@@ -38,6 +39,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +61,8 @@ public class TestNettyRpcConnection {
   @BeforeClass
   public static void setUp() throws IOException {
     CLIENT = new NettyRpcClient(HBaseConfiguration.create());
+    SecurityInfo securityInfoMock = Mockito.mock(SecurityInfo.class);
+    SecurityInfo.addInfo("test", securityInfoMock);
     CONN = new NettyRpcConnection(CLIENT,
       new ConnectionId(User.getCurrent(), "test", Address.fromParts("localhost", 1234)));
   }

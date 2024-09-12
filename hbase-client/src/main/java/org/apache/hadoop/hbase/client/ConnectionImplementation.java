@@ -977,8 +977,7 @@ public class ConnectionImplementation implements ClusterConnection, Closeable {
     boolean relocateMeta = false;
     for (int tries = 0;; tries++) {
       if (tries >= maxAttempts) {
-        throw new NoServerForRegionException("Unable to find region for "
-          + Bytes.toStringBinary(row) + " in " + tableName + " after " + tries + " tries.");
+        throw new NoServerForRegionException("Unable to find region in " + tableName + " after " + tries + " tries.");
       }
       if (useCache) {
         RegionLocations locations = getCachedLocation(tableName, row);
@@ -1027,19 +1026,18 @@ public class ConnectionImplementation implements ClusterConnection, Closeable {
                 throw new TableNotFoundException(tableName);
               } else {
                 throw new IOException(
-                  "Unable to find region for " + Bytes.toStringBinary(row) + " in " + tableName);
+                  "Unable to find region in " + tableName);
               }
             }
             tableNotFound = false;
             // convert the row result into the HRegionLocation we need!
             locations = MetaTableAccessor.getRegionLocations(regionInfoRow);
             if (locations == null || locations.getRegionLocation(replicaId) == null) {
-              throw new IOException("RegionInfo null in " + tableName + ", row=" + regionInfoRow);
+              throw new IOException("RegionInfo null in " + tableName);
             }
             RegionInfo regionInfo = locations.getRegionLocation(replicaId).getRegion();
             if (regionInfo == null) {
-              throw new IOException("RegionInfo null or empty in " + TableName.META_TABLE_NAME
-                + ", row=" + regionInfoRow);
+              throw new IOException("RegionInfo null or empty in " + TableName.META_TABLE_NAME);
             }
             // See HBASE-20182. It is possible that we locate to a split parent even after the
             // children are online, so here we need to skip this region and go to the next one.
@@ -1055,13 +1053,12 @@ public class ConnectionImplementation implements ClusterConnection, Closeable {
             // not contains us.
             if (!regionInfo.containsRow(row)) {
               throw new IOException(
-                "Unable to find region for " + Bytes.toStringBinary(row) + " in " + tableName);
+                "Unable to find region in " + tableName);
             }
             ServerName serverName = locations.getRegionLocation(replicaId).getServerName();
             if (serverName == null) {
               throw new NoServerForRegionException("No server address listed in "
-                + TableName.META_TABLE_NAME + " for region " + regionInfo.getRegionNameAsString()
-                + " containing row " + Bytes.toStringBinary(row));
+                + TableName.META_TABLE_NAME + " for region " + regionInfo.getRegionNameAsString());
             }
             if (isDeadServer(serverName)) {
               throw new RegionServerStoppedException(

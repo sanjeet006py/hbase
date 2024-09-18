@@ -117,12 +117,24 @@
             <id>aggregate-into-a-jar-with-relocated-third-parties</id>
             <configuration>
               <filters>
+
+                <filter>
+                  <artifact>dnsjava:dnsjava</artifact>
+                  <excludes>
+                    <exclude>META-INF/versions/21/*</exclude>
+                    <exclude>META-INF/versions/21/**/*</exclude>
+                  </excludes>
+                </filter>
+
                 <filter>
                   <artifact>*:*</artifact>
                   <excludes>
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/versions/9/module-info.class</exclude>
+                    <exclude>META-INF/versions/11/module-info.class</exclude>
+                    <exclude>META-INF/versions/21/module-info.class</exclude>
                   </excludes>
                 </filter>
               </filters>

@@ -523,7 +523,7 @@ public class ReplicationSink {
           ioe = new TableNotFoundException("'" + tableName + "'");
         } else {
           ioe = e;
-	}
+        }
         if (error == null) {
           error = ioe;
         } else {

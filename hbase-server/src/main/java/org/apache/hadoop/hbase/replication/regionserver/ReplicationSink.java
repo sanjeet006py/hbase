@@ -47,7 +47,6 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.AsyncConnection;
@@ -254,7 +253,6 @@ public class ReplicationSink {
               buildBulkLoadHFileMap(bulkLoadHFileMap, table, bld);
             }
           } else if (CellUtil.matchingQualifier(cell, WALEdit.REPLICATION_MARKER)) {
-            cell = PrivateCellUtil.deepClone(cell); // Ensure cell buffer is independently managed
             Mutation put = processReplicationMarkerEntry(cell);
             if (put == null) {
               continue;
@@ -267,7 +265,6 @@ public class ReplicationSink {
             addToHashMultiMap(rowMap, table, clusterIds, put);
           } else {
             // Handle wal replication
-            cell = PrivateCellUtil.deepClone(cell); // Ensure cell buffer is independently managed
             if (isNewRowOrType(previousCell, cell)) {
               // Create new mutation
               mutation = CellUtil.isDelete(cell)
@@ -338,8 +335,6 @@ public class ReplicationSink {
       LOG.error("Unable to accept edit because:", ex);
       this.metrics.incrementFailedBatches();
       throw ex;
-    } catch (CloneNotSupportedException e) {
-      throw new IOException(e);
     }
   }
 
@@ -512,16 +507,32 @@ public class ReplicationSink {
       }
       futures.addAll(batchRows.stream().map(table::batchAll).collect(Collectors.toList()));
     }
-
+    // Here we will always wait until all futures are finished, even if there are failures when
+    // getting from a future in the middle. This is because this method may be called in a rpc call,
+    // so the batch operations may reference some off heap cells(through CellScanner). If we return
+    // earlier here, the rpc call may be finished and they will release the off heap cells before
+    // some of the batch operations finish, and then cause corrupt data or even crash the region
+    // server. See HBASE-28584 and HBASE-28850 for more details.
+    IOException error = null;
     for (Future<?> future : futures) {
       try {
         FutureUtils.get(future);
       } catch (RetriesExhaustedException e) {
+        IOException ioe;
         if (e.getCause() instanceof TableNotFoundException) {
-          throw new TableNotFoundException("'" + tableName + "'");
+          ioe = new TableNotFoundException("'" + tableName + "'");
+        } else {
+          ioe = e;
+	}
+        if (error == null) {
+          error = ioe;
+        } else {
+          error.addSuppressed(ioe);
         }
-        throw e;
       }
+    }
+    if (error != null) {
+      throw error;
     }
   }
 

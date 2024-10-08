@@ -32,14 +32,14 @@
   <parent>
      <groupId>com.salesforce.hbase</groupId>
      <artifactId>bigdata-parent-pom</artifactId>
-     <version>3.3.2-1.12.151</version>
+     <version>3.3.2-1.13.152</version>
     <relativePath/>
     <!-- no parent resolution -->
   </parent>
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>pom</packaging>
-  <version>2.5.10-sfdc-1.1.3-SNAPSHOT</version>
+  <version>2.5.10-sfdc-1.1.3</version>
   <name>Apache HBase</name>
   <description>Apache HBase is the Hadoop database. Use it when you need
     random, realtime read/write access to your Big Data.

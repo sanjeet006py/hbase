@@ -89,7 +89,7 @@ public class TaskMonitor {
   }
 
   public MonitoredTask createStatus(String description, boolean ignore) {
-    return createStatus(description, ignore, false);
+    return createStatus(description, ignore, true);
   }
 
   /**

@@ -215,7 +215,7 @@ public class TestTaskMonitor {
   @Test
   public void testStatusJournal() {
     TaskMonitor tm = new TaskMonitor(new Configuration());
-    MonitoredTask task = tm.createStatus("Test task");
+    MonitoredTask task = tm.createStatus("Test task", false, false);
     assertTrue(task.getStatusJournal().isEmpty());
     task.setStatus("status1");
     // journal should be empty since it is disabled

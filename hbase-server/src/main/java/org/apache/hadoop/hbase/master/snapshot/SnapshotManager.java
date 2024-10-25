@@ -451,7 +451,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param snapshot description of the snapshot we want to start
    * @throws HBaseSnapshotException if the filesystem could not be prepared to start the snapshot
    */
-  private synchronized void prepareToTakeSnapshot(SnapshotDescription snapshot)
+  public synchronized void prepareToTakeSnapshot(SnapshotDescription snapshot)
     throws HBaseSnapshotException {
     Path workingDir =
       SnapshotDescriptionUtils.getWorkingSnapshotDir(snapshot, rootDir, master.getConfiguration());
@@ -571,7 +571,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param snapshot the snapshot description
    * @param handler  the snapshot handler
    */
-  private synchronized void snapshotTable(SnapshotDescription snapshot,
+  public synchronized void snapshotTable(SnapshotDescription snapshot,
     final TakeSnapshotHandler handler) throws IOException {
     try {
       handler.prepare();

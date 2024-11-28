@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hbase.thirdparty.com.google.common.base.Strings;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -107,6 +108,9 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
 
   /* A pattern that matches a Kerberos name, borrowed from Hadoop's KerberosName */
   private static final Pattern NAME_PATTERN = Pattern.compile("([^/@]*)(/([^/@]*))?@([^/@]*)");
+
+  private static final String HABSE_UPGRADE_CUSTOM_ACLS_KEY = "hbase.upgrade.custom.acls";
+  private String customAclsStr;
 
   /**
    * Instantiate a ZooKeeper connection and watcher.
@@ -194,6 +198,8 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
     }
     this.zkSyncTimeout = conf.getLong(HConstants.ZK_SYNC_BLOCKING_TIMEOUT_MS,
       HConstants.ZK_SYNC_BLOCKING_TIMEOUT_DEFAULT_MS);
+
+    customAclsStr = conf.get(HABSE_UPGRADE_CUSTOM_ACLS_KEY, "");
   }
 
   public List<ACL> createACL(String node) {
@@ -204,8 +210,8 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
     if (!node.startsWith(getZNodePaths().baseZNode)) {
       return Ids.OPEN_ACL_UNSAFE;
     }
+    ArrayList<ACL> acls = new ArrayList<>();
     if (isSecureZooKeeper) {
-      ArrayList<ACL> acls = new ArrayList<>();
       // add permission to hbase supper user
       String[] superUsers = getConfiguration().getStrings(Superusers.SUPERUSER_CONF_KEY);
       String hbaseUser = null;
@@ -239,10 +245,25 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
       } else {
         acls.addAll(Ids.CREATOR_ALL_ACL);
       }
-      return acls;
     } else {
-      return Ids.OPEN_ACL_UNSAFE;
+      acls.addAll(Ids.OPEN_ACL_UNSAFE);
     }
+    // Apply custom acls if any.
+    if (!Strings.isNullOrEmpty(customAclsStr)) {
+      String[] customAcls = customAclsStr.split(";");
+      for (String customAcl : customAcls) {
+        String[] customAclParts = customAcl.split(",");
+        if (customAclParts.length != 3) {
+          LOG.warn("Invalid custom ACL {}", customAcl);
+          continue;
+        }
+        acls.add(new ACL(Integer.parseInt(customAclParts[2]), new Id(customAclParts[0], customAclParts[1])));
+      }
+    }
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("ACLs for znode: " + node + " : " + acls);
+    }
+    return acls;
   }
 
   private void createBaseZNodes() throws ZooKeeperConnectionException {

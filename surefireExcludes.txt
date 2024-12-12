@@ -16,3 +16,5 @@ org.apache.hadoop.hbase.replication.regionserver.TestRefreshRecoveredReplication
 org.apache.hadoop.hbase.security.access.TestCellACLWithMultipleVersions
 org.apache.hadoop.hbase.coprocessor.example.TestZooKeeperScanPolicyObserver
 org.apache.hadoop.hbase.io.hfile.TestCombinedBlockCache
+org.apache.hadoop.hbase.regionserver.TestCompactionToolNpeFix
+org.apache.hadoop.hbase.client.TestSeparateClientZKCluster

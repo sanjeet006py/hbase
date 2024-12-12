@@ -720,6 +720,7 @@
     <!-- Still need this to ignore some errors when building javadoc-->
     <doclint>none</doclint>
     <javax.activation.version>1.2.0</javax.activation.version>
+    <surefire.excludesFile>${session.topLevelProject.basedir}/surefireExcludes.txt</surefire.excludesFile>
   </properties>
   <!-- Sorted by groups of dependencies then groupId and artifactId -->
   <dependencyManagement>
@@ -1644,6 +1645,7 @@
                 <value>org.apache.hadoop.hbase.TimedOutTestsListener,org.apache.hadoop.hbase.HBaseClassTestRuleChecker,org.apache.hadoop.hbase.ResourceCheckerJUnitListener</value>
               </property>
             </properties>
+            <excludesFile>${surefire.excludesFile}</excludesFile>
           </configuration>
           <dependencies>
             <!-- by default surefire selects dynamically the connector to the unit tests

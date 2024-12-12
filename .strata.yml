@@ -4,6 +4,5 @@ email_only_last_committer_on_dev_branch: true
 time_out_mins: 300                                      # (Optional default = 180
 number_of_artifacts_to_keep: 3                          # (Optional) default = 3
 compliance_required: false                              # (Optional) default = true
-unit_tests_command: mvn clean install -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true # The command we'll run for the unit tests stage
-docker_test_images:                                     # The image(s) that will be used to run your unit tests (Unit tests will be run against each image)
-  - sfci/docker-images/sfdc_centos7_jdk8
+unit_tests_command: mvn clean install -Pjacoco -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true # The command we'll run for the unit tests stage
+production_branch: 2.5.10-sfdc-13

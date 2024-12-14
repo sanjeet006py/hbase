@@ -1,8 +1,10 @@
-pipeline_template: utest-only/Jenkinsfile-1
-email_reply_to: bigdata-hbase-team@salesforce.com # Change this to your group's e-mail address!
-email_only_last_committer_on_dev_branch: true
-time_out_mins: 300                                      # (Optional default = 180
-number_of_artifacts_to_keep: 3                          # (Optional) default = 3
-compliance_required: false                              # (Optional) default = true
-unit_tests_command: mvn clean install -Pjacoco -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true # The command we'll run for the unit tests stage
-production_branch: 2.5.10-sfdc-13
+global:
+  email-reply-to: bigdata-hbase-team@salesforce.com # Change this to your group's e-mail address!
+  email-only-last-committer-on-dev-branch: true
+  timeout: 300
+  production-branches: 
+    - 2.5.10-sfdc-13
+stages:
+  integration-test:
+    - maven-verify:
+        maven-publish-jar-args: -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true

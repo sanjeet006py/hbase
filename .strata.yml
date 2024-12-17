@@ -7,4 +7,4 @@ global:
 stages:
   integration-test:
     - maven-verify:
-        maven-publish-jar-args: -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true
+        maven-publish-jar-args: -Pjacoco -DskipITs -Dmaven.test.failure.ignore=true -Dsurefire.testFailureIgnore=true

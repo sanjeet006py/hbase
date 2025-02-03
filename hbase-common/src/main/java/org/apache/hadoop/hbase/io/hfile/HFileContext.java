@@ -67,6 +67,7 @@ public class HFileContext implements HeapSize, Cloneable {
   private byte[] columnFamily;
   private byte[] tableName;
   private CellComparator cellComparator;
+  private int pbePrefixLength;
 
   // Empty constructor. Go with setters
   public HFileContext() {
@@ -92,13 +93,15 @@ public class HFileContext implements HeapSize, Cloneable {
     this.tableName = context.tableName;
     this.cellComparator = context.cellComparator;
     this.indexBlockEncoding = context.indexBlockEncoding;
+    this.pbePrefixLength = context.pbePrefixLength;
   }
 
   HFileContext(boolean useHBaseChecksum, boolean includesMvcc, boolean includesTags,
     Compression.Algorithm compressAlgo, boolean compressTags, ChecksumType checksumType,
     int bytesPerChecksum, int blockSize, DataBlockEncoding encoding,
     Encryption.Context cryptoContext, long fileCreateTime, String hfileName, byte[] columnFamily,
-    byte[] tableName, CellComparator cellComparator, IndexBlockEncoding indexBlockEncoding) {
+    byte[] tableName, CellComparator cellComparator, IndexBlockEncoding indexBlockEncoding,
+    int pbePrefixLength) {
     this.usesHBaseChecksum = useHBaseChecksum;
     this.includesMvcc = includesMvcc;
     this.includesTags = includesTags;
@@ -124,6 +127,7 @@ public class HFileContext implements HeapSize, Cloneable {
       : this.tableName != null
         ? InnerStoreCellComparator.getInnerStoreCellComparator(this.tableName)
       : InnerStoreCellComparator.INNER_STORE_COMPARATOR;
+    this.pbePrefixLength = pbePrefixLength;
   }
 
   /** Returns true when on-disk blocks are compressed, and/or encrypted; false otherwise. */
@@ -221,6 +225,10 @@ public class HFileContext implements HeapSize, Cloneable {
     return this.cellComparator;
   }
 
+  public int getPbePrefixLength() {
+    return this.pbePrefixLength;
+  }
+
   /**
    * HeapSize implementation. NOTE : The heap size should be altered when new state variable are
    * added.
@@ -291,6 +299,8 @@ public class HFileContext implements HeapSize, Cloneable {
     }
     sb.append(", cellComparator=");
     sb.append(this.cellComparator);
+    sb.append(", pbePrefixLength");
+    sb.append(this.pbePrefixLength);
     sb.append("]");
     return sb.toString();
   }

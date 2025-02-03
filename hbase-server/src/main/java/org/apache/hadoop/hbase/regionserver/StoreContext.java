@@ -51,6 +51,7 @@ public final class StoreContext implements HeapSize {
   private final ColumnFamilyDescriptor family;
   private final Path familyStoreDirectoryPath;
   private final RegionCoprocessorHost coprocessorHost;
+  private final int pbePrefixLength;
 
   private StoreContext(Builder builder) {
     this.blockSize = builder.blockSize;
@@ -64,6 +65,7 @@ public final class StoreContext implements HeapSize {
     this.family = builder.family;
     this.familyStoreDirectoryPath = builder.familyStoreDirectoryPath;
     this.coprocessorHost = builder.coprocessorHost;
+    this.pbePrefixLength = builder.pbePrefixLength;
   }
 
   public int getBlockSize() {
@@ -130,6 +132,10 @@ public final class StoreContext implements HeapSize {
     return getRegionInfo().getReplicaId() == RegionInfo.DEFAULT_REPLICA_ID;
   }
 
+  public int getPbePrefixLength() {
+    return pbePrefixLength;
+  }
+
   public static Builder getBuilder() {
     return new Builder();
   }
@@ -151,6 +157,7 @@ public final class StoreContext implements HeapSize {
     private ColumnFamilyDescriptor family;
     private Path familyStoreDirectoryPath;
     private RegionCoprocessorHost coprocessorHost;
+    private int pbePrefixLength = 0;
 
     public Builder withBlockSize(int blockSize) {
       this.blockSize = blockSize;
@@ -205,6 +212,11 @@ public final class StoreContext implements HeapSize {
 
     public Builder withRegionCoprocessorHost(RegionCoprocessorHost coprocessorHost) {
       this.coprocessorHost = coprocessorHost;
+      return this;
+    }
+
+    public Builder withPbePrefixLength(int pbePrefixLength) {
+      this.pbePrefixLength = pbePrefixLength;
       return this;
     }
 

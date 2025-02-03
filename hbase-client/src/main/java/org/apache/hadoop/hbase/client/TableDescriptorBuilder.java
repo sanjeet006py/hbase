@@ -232,6 +232,9 @@ public class TableDescriptorBuilder {
 
   public static final boolean DEFAULT_REGION_MEMSTORE_REPLICATION = true;
 
+  public static final String PBE_PREFIX_LENGTH = "PBE_PREFIX_LENGTH";
+  public static final int PBE_PREFIX_LENGTH_DEFAULT = 0;
+
   private final static Map<String, String> DEFAULT_VALUES = new HashMap<>();
   private final static Set<Bytes> RESERVED_KEYWORDS = new HashSet<>();
 

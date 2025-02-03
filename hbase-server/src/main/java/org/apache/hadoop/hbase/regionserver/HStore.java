@@ -69,6 +69,8 @@ import org.apache.hadoop.hbase.backup.FailedArchiveException;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.conf.PropagatingConfigurationObserver;
 import org.apache.hadoop.hbase.coprocessor.ReadOnlyConfiguration;
@@ -257,7 +259,7 @@ public class HStore
     this.conf = StoreUtils.createStoreConfiguration(confParam, region.getTableDescriptor(), family);
 
     this.region = region;
-    this.storeContext = initializeStoreContext(family);
+    this.storeContext = initializeStoreContext(family, region.getTableDescriptor());
 
     // Assemble the store's home directory and Ensure it exists.
     region.getRegionFileSystem().createStoreDir(family.getNameAsString());
@@ -328,8 +330,8 @@ public class HStore
       parallelPutCountPrintThreshold, family.getDataBlockEncoding(), family.getCompressionType());
   }
 
-  private StoreContext initializeStoreContext(ColumnFamilyDescriptor family) throws IOException {
-    return new StoreContext.Builder().withBlockSize(family.getBlocksize())
+  private StoreContext initializeStoreContext(ColumnFamilyDescriptor family, TableDescriptor htd) throws IOException {
+    StoreContext.Builder builder = new StoreContext.Builder().withBlockSize(family.getBlocksize())
       .withEncryptionContext(EncryptionUtil.createEncryptionContext(conf, family))
       .withBloomType(family.getBloomFilterType()).withCacheConfig(createCacheConf(family))
       .withCellComparator(region.getTableDescriptor().isMetaTable() || conf
@@ -341,7 +343,19 @@ public class HStore
       .withFavoredNodesSupplier(this::getFavoredNodes)
       .withFamilyStoreDirectoryPath(
         region.getRegionFileSystem().getStoreDir(family.getNameAsString()))
-      .withRegionCoprocessorHost(region.getCoprocessorHost()).build();
+      .withRegionCoprocessorHost(region.getCoprocessorHost());
+    String pbePrefixLengthString = htd.getValue(TableDescriptorBuilder.PBE_PREFIX_LENGTH);
+    int pbePrefixLength = TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
+    try {
+      if (pbePrefixLengthString != null) {
+        pbePrefixLength = Integer.parseInt(pbePrefixLengthString);
+      }
+    }
+    catch (NumberFormatException ex) {
+      LOG.warn("Invalid value for " + TableDescriptorBuilder.PBE_PREFIX_LENGTH
+        + " for table " + htd.getTableName() + ": " + pbePrefixLengthString);
+    }
+    return builder.withPbePrefixLength(pbePrefixLength).build();
   }
 
   private InetSocketAddress[] getFavoredNodes() {

@@ -137,7 +137,7 @@ public final class HFile {
   /**
    * Maximum supported HFile format version
    */
-  public static final int MAX_FORMAT_VERSION = 3;
+  public static final int MAX_FORMAT_VERSION = 4;
 
   /**
    * Minimum HFile format version with support for persisting cell tags
@@ -257,7 +257,7 @@ public final class HFile {
     protected Path path;
     protected FSDataOutputStream ostream;
     protected InetSocketAddress[] favoredNodes;
-    private HFileContext fileContext;
+    protected HFileContext fileContext;
     protected boolean shouldDropBehind = false;
 
     WriterFactory(Configuration conf, CacheConfig cacheConf) {
@@ -295,7 +295,7 @@ public final class HFile {
       return this;
     }
 
-    public Writer create() throws IOException {
+    protected void preCreate() throws IOException {
       if ((path != null ? 1 : 0) + (ostream != null ? 1 : 0) != 1) {
         throw new AssertionError("Please specify exactly one of " + "filesystem/path or path");
       }
@@ -308,6 +308,10 @@ public final class HFile {
           LOG.debug("Unable to set drop behind on {}", path.getName());
         }
       }
+    }
+
+    public Writer create() throws IOException {
+      preCreate();
       return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext);
     }
   }
@@ -342,6 +346,8 @@ public final class HFile {
           + "in hbase-site.xml)");
       case 3:
         return new HFile.WriterFactory(conf, cacheConf);
+      case 4:
+        return new RowKeyPrefixIndexedHFileWriter.WriterFactory(conf, cacheConf);
       default:
         throw new IllegalArgumentException(
           "Cannot create writer for HFile " + "format version " + version);

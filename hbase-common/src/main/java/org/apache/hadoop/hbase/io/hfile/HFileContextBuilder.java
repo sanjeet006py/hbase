@@ -61,6 +61,7 @@ public class HFileContextBuilder {
   private byte[] columnFamily = null;
   private byte[] tableName = null;
   private CellComparator cellComparator;
+  private int pbePrefixLength;
 
   public HFileContextBuilder() {
   }
@@ -85,6 +86,7 @@ public class HFileContextBuilder {
     this.tableName = hfc.getTableName();
     this.cellComparator = hfc.getCellComparator();
     this.indexBlockEncoding = hfc.getIndexBlockEncoding();
+    this.pbePrefixLength = hfc.getPbePrefixLength();
   }
 
   public HFileContextBuilder withHBaseCheckSum(boolean useHBaseCheckSum) {
@@ -167,9 +169,15 @@ public class HFileContextBuilder {
     return this;
   }
 
+  public HFileContextBuilder withPbePrefixLength(int pbePrefixLength) {
+    this.pbePrefixLength = pbePrefixLength;
+    return this;
+  }
+
   public HFileContext build() {
     return new HFileContext(usesHBaseChecksum, includesMvcc, includesTags, compression,
       compressTags, checkSumType, bytesPerChecksum, blockSize, encoding, cryptoContext,
-      fileCreateTime, hfileName, columnFamily, tableName, cellComparator, indexBlockEncoding);
+      fileCreateTime, hfileName, columnFamily, tableName, cellComparator, indexBlockEncoding,
+      pbePrefixLength);
   }
 }

@@ -325,10 +325,14 @@ public class HFileWriterImpl implements HFile.Writer {
     LOG.trace("Initialized with {}", cacheConf);
   }
 
+  protected boolean shouldFinishBlock(Cell cell) {
+    return false;
+  }
+
   /**
    * At a block boundary, write all the inline blocks and opens new block.
    */
-  protected void checkBlockBoundary() throws IOException {
+  protected void checkBlockBoundary(Cell cell) throws IOException {
     boolean shouldFinishBlock = false;
     // This means hbase.writer.unified.encoded.blocksize.ratio was set to something different from 0
     // and we should use the encoding ratio
@@ -339,6 +343,7 @@ public class HFileWriterImpl implements HFile.Writer {
         || blockWriter.blockSizeWritten() >= hFileContext.getBlocksize();
     }
     shouldFinishBlock &= blockWriter.checkBoundariesWithPredicate();
+    shouldFinishBlock |= shouldFinishBlock(cell);
     if (shouldFinishBlock) {
       finishBlock();
       writeInlineBlocks(false);
@@ -737,7 +742,7 @@ public class HFileWriterImpl implements HFile.Writer {
     // checkKey uses comparator to check we are writing in order.
     boolean dupKey = checkKey(cell);
     if (!dupKey) {
-      checkBlockBoundary();
+      checkBlockBoundary(cell);
     }
 
     if (!blockWriter.isWriting()) {

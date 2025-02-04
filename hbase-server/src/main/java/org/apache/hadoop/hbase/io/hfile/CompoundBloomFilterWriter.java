@@ -73,8 +73,7 @@ public class CompoundBloomFilterWriter extends CompoundBloomFilterBase
   /** The first key in the current Bloom filter chunk. */
   private byte[] firstKeyInChunk = null;
 
-  private HFileBlockIndex.BlockIndexWriter bloomBlockIndexWriter =
-    new HFileBlockIndex.BlockIndexWriter();
+  protected HFileBlockIndex.BlockIndexWriter bloomBlockIndexWriter;
 
   /** Whether to cache-on-write compound Bloom filter chunks */
   private boolean cacheOnWrite;
@@ -96,6 +95,11 @@ public class CompoundBloomFilterWriter extends CompoundBloomFilterBase
     this.cacheOnWrite = cacheOnWrite;
     this.comparator = comparator;
     this.bloomType = bloomType;
+    finishInit();
+  }
+
+  protected void finishInit() {
+    bloomBlockIndexWriter = new HFileBlockIndex.BlockIndexWriter();
   }
 
   @Override

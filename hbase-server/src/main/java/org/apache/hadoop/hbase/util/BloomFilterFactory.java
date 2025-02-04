@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.io.hfile.CompoundBloomFilter;
 import org.apache.hadoop.hbase.io.hfile.CompoundBloomFilterBase;
 import org.apache.hadoop.hbase.io.hfile.CompoundBloomFilterWriter;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.io.hfile.RowKeyPrefixIndexedBloomFilterWriter;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -164,12 +165,21 @@ public final class BloomFilterFactory {
     }
 
     int maxFold = conf.getInt(IO_STOREFILE_BLOOM_MAX_FOLD, MAX_ALLOWED_FOLD_FACTOR);
+    int version = HFile.getFormatVersion(conf);
 
     // Do we support compound bloom filters?
     // In case of compound Bloom filters we ignore the maxKeys hint.
-    CompoundBloomFilterWriter bloomWriter = new CompoundBloomFilterWriter(getBloomBlockSize(conf),
-      err, Hash.getHashType(conf), maxFold, cacheConf.shouldCacheBloomsOnWrite(),
-      bloomType == BloomType.ROWCOL ? CellComparatorImpl.COMPARATOR : null, bloomType);
+    CompoundBloomFilterWriter bloomWriter;
+    if (version == 4) {
+      bloomWriter = new RowKeyPrefixIndexedBloomFilterWriter(getBloomBlockSize(conf), err,
+        Hash.getHashType(conf), maxFold, cacheConf.shouldCacheBloomsOnWrite(),
+        bloomType == BloomType.ROWCOL ? CellComparatorImpl.COMPARATOR : null, bloomType);
+    } else {
+      bloomWriter =
+        new CompoundBloomFilterWriter(getBloomBlockSize(conf), err, Hash.getHashType(conf), maxFold,
+          cacheConf.shouldCacheBloomsOnWrite(),
+          bloomType == BloomType.ROWCOL ? CellComparatorImpl.COMPARATOR : null, bloomType);
+    }
     writer.addInlineBlockWriter(bloomWriter);
     return bloomWriter;
   }

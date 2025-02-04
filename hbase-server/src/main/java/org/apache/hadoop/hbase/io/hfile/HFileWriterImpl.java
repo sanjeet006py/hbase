@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
 public class HFileWriterImpl implements HFile.Writer {
   private static final Logger LOG = LoggerFactory.getLogger(HFileWriterImpl.class);
 
-  private static final long UNSET = -1;
+  protected static final long UNSET = -1;
 
   /** if this feature is enabled, preCalculate encoded data size before real encoding happens */
   public static final String UNIFIED_ENCODED_BLOCKSIZE_RATIO =
@@ -145,16 +145,16 @@ public class HFileWriterImpl implements HFile.Writer {
   public static final int KEY_VALUE_VER_WITH_MEMSTORE = 1;
 
   /** Inline block writers for multi-level block index and compound Blooms. */
-  private List<InlineBlockWriter> inlineBlockWriters = new ArrayList<>();
+  protected List<InlineBlockWriter> inlineBlockWriters = new ArrayList<>();
 
   /** block writer */
   protected HFileBlock.Writer blockWriter;
 
-  private HFileBlockIndex.BlockIndexWriter dataBlockIndexWriter;
-  private HFileBlockIndex.BlockIndexWriter metaBlockIndexWriter;
+  protected HFileBlockIndex.BlockIndexWriter dataBlockIndexWriter;
+  protected HFileBlockIndex.BlockIndexWriter metaBlockIndexWriter;
 
   /** The offset of the first data block or -1 if the file is empty. */
-  private long firstDataBlockOffset = UNSET;
+  protected long firstDataBlockOffset = UNSET;
 
   /** The offset of the last data block or 0 if the file is empty. */
   protected long lastDataBlockOffset = UNSET;
@@ -163,7 +163,7 @@ public class HFileWriterImpl implements HFile.Writer {
    * The last(stop) Cell of the previous data block. This reference should be short-lived since we
    * write hfiles in a burst.
    */
-  private Cell lastCellOfPreviousBlock = null;
+  protected Cell lastCellOfPreviousBlock = null;
 
   /** Additional data items to be written to the "load-on-open" section. */
   private List<BlockWritable> additionalLoadOnOpenData = new ArrayList<>();
@@ -326,33 +326,36 @@ public class HFileWriterImpl implements HFile.Writer {
   }
 
   protected boolean shouldFinishBlock(Cell cell) {
-    return false;
+    boolean finishBlock = false;
+    // This means hbase.writer.unified.encoded.blocksize.ratio was set to something different from 0
+    // and we should use the encoding ratio
+    if (encodedBlockSizeLimit > 0) {
+      finishBlock = blockWriter.encodedBlockSizeWritten() >= encodedBlockSizeLimit;
+    } else {
+      finishBlock = blockWriter.encodedBlockSizeWritten() >= hFileContext.getBlocksize()
+        || blockWriter.blockSizeWritten() >= hFileContext.getBlocksize();
+    }
+    finishBlock &= blockWriter.checkBoundariesWithPredicate();
+    return finishBlock;
+  }
+
+  protected void finishCurBlockAndStartNewBlock() throws IOException {
+    finishBlock();
+    writeInlineBlocks(false);
+    newBlock();
   }
 
   /**
    * At a block boundary, write all the inline blocks and opens new block.
    */
   protected void checkBlockBoundary(Cell cell) throws IOException {
-    boolean shouldFinishBlock = false;
-    // This means hbase.writer.unified.encoded.blocksize.ratio was set to something different from 0
-    // and we should use the encoding ratio
-    if (encodedBlockSizeLimit > 0) {
-      shouldFinishBlock = blockWriter.encodedBlockSizeWritten() >= encodedBlockSizeLimit;
-    } else {
-      shouldFinishBlock = blockWriter.encodedBlockSizeWritten() >= hFileContext.getBlocksize()
-        || blockWriter.blockSizeWritten() >= hFileContext.getBlocksize();
-    }
-    shouldFinishBlock &= blockWriter.checkBoundariesWithPredicate();
-    shouldFinishBlock |= shouldFinishBlock(cell);
-    if (shouldFinishBlock) {
-      finishBlock();
-      writeInlineBlocks(false);
-      newBlock();
+    if (shouldFinishBlock(cell)) {
+      finishCurBlockAndStartNewBlock();
     }
   }
 
   /** Clean up the data block that is currently being written. */
-  private void finishBlock() throws IOException {
+  protected void finishBlock() throws IOException {
     if (!blockWriter.isWriting() || blockWriter.blockSizeWritten() == 0) {
       return;
     }
@@ -535,7 +538,7 @@ public class HFileWriterImpl implements HFile.Writer {
   }
 
   /** Gives inline block writers an opportunity to contribute blocks. */
-  private void writeInlineBlocks(boolean closing) throws IOException {
+  protected void writeInlineBlocks(boolean closing) throws IOException {
     for (InlineBlockWriter ibw : inlineBlockWriters) {
       while (ibw.shouldWriteBlock(closing)) {
         long offset = outputStream.getPos();
@@ -557,7 +560,7 @@ public class HFileWriterImpl implements HFile.Writer {
    * Caches the last written HFile block.
    * @param offset the offset of the block we want to cache. Used to determine the cache key.
    */
-  private void doCacheOnWrite(long offset) {
+  void doCacheOnWrite(long offset) {
     cacheConf.getBlockCache().ifPresent(cache -> {
       HFileBlock cacheFormatBlock = blockWriter.getBlockForCaching(cacheConf);
       try {

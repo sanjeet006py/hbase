@@ -27,7 +27,7 @@ import org.apache.yetus.audience.InterfaceAudience;
  * stored as inline blocks.
  */
 @InterfaceAudience.Private
-public interface InlineBlockWriter {
+public interface InlineBlockWriter extends RowKeyPrefixIndexedWriter {
 
   /**
    * Determines whether there is a new block to be written out. whether the file is being closed, in

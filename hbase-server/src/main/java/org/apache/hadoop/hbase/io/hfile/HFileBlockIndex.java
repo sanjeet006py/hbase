@@ -1030,7 +1030,7 @@ public class HFileBlockIndex {
 
     public long writeMultiLevelIndex(FSDataOutputStream out) throws IOException {
       if (rootChunk != null && rootChunk.getNumEntries() > 0) {
-        throw new IOException("Root chunk already has " + rootChunk.getNumEntries());
+        throw new IOException("Root chunk already has " + rootChunk.getNumEntries() + " entries");
       }
       if (curInlineChunk == null) {
         throw new IOException("Trying to write multi-level index but inline chunk is null");
@@ -1074,9 +1074,6 @@ public class HFileBlockIndex {
           numLevels += 1;
         }
       }
-      else {
-        curInlineChunk = newChunk();
-      }
 
       // write the root level
       long rootLevelIndexPos = out.getPos();
@@ -1109,8 +1106,6 @@ public class HFileBlockIndex {
           + StringUtils.humanReadableInt(this.totalBlockOnDiskSize) + " on-disk size, "
           + StringUtils.humanReadableInt(totalBlockUncompressedSize) + " total uncompressed size.");
       }
-      rootChunk.clear();
-      curInlineChunk.clear();
       return rootLevelIndexPos;
     }
 
@@ -1136,7 +1131,6 @@ public class HFileBlockIndex {
           + " entries, " + rootChunk.getRootSize() + " bytes");
       }
       indexBlockEncoder.encode(rootChunk, true, out);
-      rootChunk.clear();
     }
 
     /**

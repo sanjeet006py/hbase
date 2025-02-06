@@ -285,7 +285,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
    * @return the Bloom filter used by this writer.
    */
   BloomFilterWriter getGeneralBloomWriter() {
-    return liveFileWriter.generalBloomFilterWriter;
+    return liveFileWriter.getGeneralBloomWriter();
   }
 
   public void close() throws IOException {
@@ -491,16 +491,9 @@ public class StoreFileWriter implements CellSink, ShipperListener {
   }
 
   public static final class SingleStoreFileWriter {
-    private final BloomFilterWriter generalBloomFilterWriter;
-    private final BloomFilterWriter deleteFamilyBloomFilterWriter;
-    private final BloomType bloomType;
-    private byte[] bloomParam = null;
-    private long earliestPutTs = HConstants.LATEST_TIMESTAMP;
-    private long deleteFamilyCnt = 0;
-    private BloomContext bloomContext = null;
-    private BloomContext deleteFamilyBloomContext = null;
     private final TimeRangeTracker timeRangeTracker;
     private final Supplier<Collection<HStoreFile>> compactedFilesSupplier;
+    private long earliestPutTs = HConstants.LATEST_TIMESTAMP;
 
     private HFile.Writer writer;
 
@@ -528,57 +521,8 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       writer =
         HFile.getWriterFactory(conf, cacheConf).withPath(fs, path).withFavoredNodes(favoredNodes)
           .withFileContext(fileContext).withShouldDropCacheBehind(shouldDropCacheBehind)
-          .withSingleStoreFileWriter(this).create();
-
-      generalBloomFilterWriter = BloomFilterFactory.createGeneralBloomAtWrite(conf, cacheConf,
-        bloomType, (int) Math.min(maxKeys, Integer.MAX_VALUE), writer);
-
-      if (generalBloomFilterWriter != null) {
-        this.bloomType = bloomType;
-        this.bloomParam = BloomFilterUtil.getBloomFilterParam(bloomType, conf);
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Bloom filter type for " + path + ": " + this.bloomType + ", param: "
-            + (bloomType == BloomType.ROWPREFIX_FIXED_LENGTH
-              ? Bytes.toInt(bloomParam)
-              : Bytes.toStringBinary(bloomParam))
-            + ", " + generalBloomFilterWriter.getClass().getSimpleName());
-        }
-        // init bloom context
-        switch (bloomType) {
-          case ROW:
-            bloomContext =
-              new RowBloomContext(generalBloomFilterWriter, fileContext.getCellComparator());
-            break;
-          case ROWCOL:
-            bloomContext =
-              new RowColBloomContext(generalBloomFilterWriter, fileContext.getCellComparator());
-            break;
-          case ROWPREFIX_FIXED_LENGTH:
-            bloomContext = new RowPrefixFixedLengthBloomContext(generalBloomFilterWriter,
-              fileContext.getCellComparator(), Bytes.toInt(bloomParam));
-            break;
-          default:
-            throw new IOException(
-              "Invalid Bloom filter type: " + bloomType + " (ROW or ROWCOL or ROWPREFIX expected)");
-        }
-      } else {
-        // Not using Bloom filters.
-        this.bloomType = BloomType.NONE;
-      }
-
-      // initialize delete family Bloom filter when there is NO RowCol Bloom filter
-      if (this.bloomType != BloomType.ROWCOL) {
-        this.deleteFamilyBloomFilterWriter = BloomFilterFactory.createDeleteBloomAtWrite(conf,
-          cacheConf, (int) Math.min(maxKeys, Integer.MAX_VALUE), writer);
-        deleteFamilyBloomContext =
-          new RowBloomContext(deleteFamilyBloomFilterWriter, fileContext.getCellComparator());
-      } else {
-        deleteFamilyBloomFilterWriter = null;
-      }
-      if (deleteFamilyBloomFilterWriter != null && LOG.isTraceEnabled()) {
-        LOG.trace("Delete Family Bloom filter type for " + path + ": "
-          + deleteFamilyBloomFilterWriter.getClass().getSimpleName());
-      }
+          .withSingleStoreFileWriter(this).withBloomType(bloomType)
+          .withMaxKeysInBloomFilters(maxKeys).create();
     }
 
     private long getPos() throws IOException {
@@ -683,33 +627,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       timeRangeTracker.includeTimestamp(cell);
     }
 
-    private void appendGeneralBloomfilter(final Cell cell) throws IOException {
-      if (this.generalBloomFilterWriter != null) {
-        /*
-         * http://2.bp.blogspot.com/_Cib_A77V54U/StZMrzaKufI/AAAAAAAAADo/ZhK7bGoJdMQ/s400/KeyValue.
-         * png Key = RowLen + Row + FamilyLen + Column [Family + Qualifier] + Timestamp 3 Types of
-         * Filtering: 1. Row = Row 2. RowCol = Row + Qualifier 3. RowPrefixFixedLength = Fixed
-         * Length Row Prefix
-         */
-        bloomContext.writeBloom(cell);
-      }
-    }
-
-    private void appendDeleteFamilyBloomFilter(final Cell cell) throws IOException {
-      if (!PrivateCellUtil.isDeleteFamily(cell) && !PrivateCellUtil.isDeleteFamilyVersion(cell)) {
-        return;
-      }
-
-      // increase the number of delete family in the store file
-      deleteFamilyCnt++;
-      if (this.deleteFamilyBloomFilterWriter != null) {
-        deleteFamilyBloomContext.writeBloom(cell);
-      }
-    }
-
     private void append(final Cell cell) throws IOException {
-      appendGeneralBloomfilter(cell);
-      appendDeleteFamilyBloomFilter(cell);
       writer.append(cell);
       trackTimestamps(cell);
     }
@@ -718,12 +636,6 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       // For now these writer will always be of type ShipperListener true.
       // TODO : Change all writers to be specifically created for compaction context
       writer.beforeShipped();
-      if (generalBloomFilterWriter != null) {
-        generalBloomFilterWriter.beforeShipped();
-      }
-      if (deleteFamilyBloomFilterWriter != null) {
-        deleteFamilyBloomFilterWriter.beforeShipped();
-      }
     }
 
     private Path getPath() {
@@ -731,7 +643,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
     }
 
     private boolean hasGeneralBloom() {
-      return this.generalBloomFilterWriter != null;
+      return writer.getGeneralBloomWriter() != null;
     }
 
     /**
@@ -739,61 +651,11 @@ public class StoreFileWriter implements CellSink, ShipperListener {
      * @return the Bloom filter used by this writer.
      */
     BloomFilterWriter getGeneralBloomWriter() {
-      return generalBloomFilterWriter;
-    }
-
-    private boolean closeBloomFilter(BloomFilterWriter bfw) throws IOException {
-      boolean haveBloom = (bfw != null && bfw.getKeyCount() > 0);
-      if (haveBloom) {
-        bfw.compactBloom();
-      }
-      return haveBloom;
-    }
-
-    public boolean closeGeneralBloomFilter() throws IOException {
-      boolean hasGeneralBloom = closeBloomFilter(generalBloomFilterWriter);
-
-      // add the general Bloom filter writer and append file info
-      if (hasGeneralBloom) {
-        writer.addGeneralBloomFilter(generalBloomFilterWriter);
-        writer.appendFileInfo(BLOOM_FILTER_TYPE_KEY, Bytes.toBytes(bloomType.toString()));
-        if (bloomParam != null) {
-          writer.appendFileInfo(BLOOM_FILTER_PARAM_KEY, bloomParam);
-        }
-        bloomContext.addLastBloomKey(writer);
-      }
-      return hasGeneralBloom;
-    }
-
-    public boolean closeDeleteFamilyBloomFilter() throws IOException {
-      boolean hasDeleteFamilyBloom = closeBloomFilter(deleteFamilyBloomFilterWriter);
-
-      // add the delete family Bloom filter writer
-      if (hasDeleteFamilyBloom) {
-        writer.addDeleteFamilyBloomFilter(deleteFamilyBloomFilterWriter);
-      }
-
-      // append file info about the number of delete family kvs
-      // even if there is no delete family Bloom.
-      writer.appendFileInfo(DELETE_FAMILY_COUNT, Bytes.toBytes(this.deleteFamilyCnt));
-
-      return hasDeleteFamilyBloom;
+      return writer.getGeneralBloomWriter();
     }
 
     private void close() throws IOException {
-      boolean hasGeneralBloom = this.closeGeneralBloomFilter();
-      boolean hasDeleteFamilyBloom = this.closeDeleteFamilyBloomFilter();
-
       writer.close();
-
-      // Log final Bloom filter statistics. This needs to be done after close()
-      // because compound Bloom filters might be finalized as part of closing.
-      if (LOG.isTraceEnabled()) {
-        LOG.trace((hasGeneralBloom ? "" : "NO ") + "General Bloom and "
-          + (hasDeleteFamilyBloom ? "" : "NO ") + "DeleteFamily" + " was added to HFile "
-          + getPath());
-      }
-
     }
 
     private void appendFileInfo(byte[] key, byte[] value) throws IOException {

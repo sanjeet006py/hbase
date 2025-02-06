@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.hfile.ReaderContext.ReaderType;
 import org.apache.hadoop.hbase.ipc.RpcServer;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.CellSink;
 import org.apache.hadoop.hbase.regionserver.ShipperListener;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
@@ -246,6 +247,8 @@ public final class HFile {
      * Return the file context for the HFile this writer belongs to
      */
     HFileContext getFileContext();
+
+    BloomFilterWriter getGeneralBloomWriter();
   }
 
   /**
@@ -262,6 +265,8 @@ public final class HFile {
     protected HFileContext fileContext;
     protected boolean shouldDropBehind = false;
     protected SingleStoreFileWriter singleStoreFileWriter;
+    protected BloomType bloomType;
+    protected long maxKeysInBloomFilters;
 
     WriterFactory(Configuration conf, CacheConfig cacheConf) {
       this.conf = conf;
@@ -303,6 +308,16 @@ public final class HFile {
       return this;
     }
 
+    public WriterFactory withBloomType(BloomType bloomType) {
+      this.bloomType = bloomType;
+      return this;
+    }
+
+    public WriterFactory withMaxKeysInBloomFilters(long maxKeysInBloomFilters) {
+      this.maxKeysInBloomFilters = maxKeysInBloomFilters;
+      return this;
+    }
+
     protected void preCreate() throws IOException {
       if ((path != null ? 1 : 0) + (ostream != null ? 1 : 0) != 1) {
         throw new AssertionError("Please specify exactly one of " + "filesystem/path or path");
@@ -321,7 +336,7 @@ public final class HFile {
     public Writer create() throws IOException {
       preCreate();
       return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext,
-        singleStoreFileWriter);
+        singleStoreFileWriter, bloomType, maxKeysInBloomFilters);
     }
   }
 

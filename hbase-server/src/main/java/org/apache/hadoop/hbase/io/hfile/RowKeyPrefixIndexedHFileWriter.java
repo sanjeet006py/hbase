@@ -9,6 +9,8 @@ import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 
 import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
 
+import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,18 +24,25 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   private static final long SECTION_START_OFFSET_ON_WRITER_INIT = 0;
 
   private final int rowKeyPrefixLength;
+
   private long sectionStartOffset = SECTION_START_OFFSET_ON_WRITER_INIT;
-  private boolean shouldFinishSection = false;
-  private RowKeyPrefixIndexedBlockIndexWriter sectionIndexWriter;
+
+  private HFileBlockIndex.BlockIndexWriter sectionIndexWriter;
+
   private byte[] sectionRowKeyPrefix = null;
-  private HFileInfo sectionFileInfo = new HFileInfo();
-  private boolean useSectionFileInfo = false;
+
+  private HFile.Writer virtualHFileWriter = null;
+
+  private final Configuration conf;
 
   public RowKeyPrefixIndexedHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
                                         FSDataOutputStream outputStream, HFileContext fileContext,
-                                        SingleStoreFileWriter singleStoreFileWriter) {
-    super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter);
+                                        SingleStoreFileWriter singleStoreFileWriter,
+                                        BloomType bloomType, long maxKeysInBloomFilters) throws IOException {
+    super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter, bloomType,
+            maxKeysInBloomFilters);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
+    this.conf = conf;
   }
 
   public static class WriterFactory extends HFile.WriterFactory {
@@ -46,105 +55,59 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       throws IOException {
       preCreate();
       return new RowKeyPrefixIndexedHFileWriter(conf, cacheConf, path, ostream, fileContext,
-              singleStoreFileWriter);
+              singleStoreFileWriter, bloomType, maxKeysInBloomFilters);
     }
   }
 
   @Override
-  protected HFileInfo getFileInfo() {
-    if (useSectionFileInfo) {
-      return sectionFileInfo;
-    }
-    else {
-      return fileInfo;
-    }
-  }
-
-  @Override
-  protected void finishInit(Configuration conf) {
-    if (blockWriter != null) {
-      throw new IllegalStateException("finishInit called twice");
-    }
-    blockWriter =
-            new RowKeyPrefixIndexedBlockWriter(conf, blockEncoder, hFileContext,
-                    cacheConf.getByteBuffAllocator(), conf.getInt(MAX_BLOCK_SIZE_UNCOMPRESSED,
-                    hFileContext.getBlocksize() * 10));
-    ((RowKeyPrefixIndexedBlockWriter) blockWriter).setSectionStartOffset(
-            SECTION_START_OFFSET_ON_WRITER_INIT);
-    // Data block index writer
+  protected void finishInit(Configuration conf, BloomType bloomType) throws IOException {
     boolean cacheIndexesOnWrite = cacheConf.shouldCacheIndexesOnWrite();
-    dataBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter(blockWriter,
-            cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
-    dataBlockIndexWriter.setMaxChunkSize(HFileBlockIndex.getMaxChunkSize(conf));
-    dataBlockIndexWriter.setMinIndexNumEntries(HFileBlockIndex.getMinIndexNumEntries(conf));
-    inlineBlockWriters.add(dataBlockIndexWriter);
-    for (InlineBlockWriter ibw: inlineBlockWriters) {
-      ibw.setSectionStartOffset(SECTION_START_OFFSET_ON_WRITER_INIT);
-    }
-
-    // Meta data block index writer
-    metaBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter();
+    blockWriter = new HFileBlock.Writer(conf, blockEncoder, hFileContext,
+            cacheConf.getByteBuffAllocator(), conf.getInt(MAX_BLOCK_SIZE_UNCOMPRESSED,
+                    hFileContext.getBlocksize() * 10));
+    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext
+            , singleStoreFileWriter, bloomType, maxKeysInBloomFilters,
+            SECTION_START_OFFSET_ON_WRITER_INIT);
     // Section index writer to store index of row key prefixes and section start offset + size
-    sectionIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter(blockWriter,
+    sectionIndexWriter = new HFileBlockIndex.BlockIndexWriter(blockWriter,
             cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
-    LOG.trace("Initialized with {}", cacheConf);
-  }
-
-  @Override
-  protected boolean checkKey(Cell cell) throws IOException {
-    boolean isCellValid = super.checkKey(cell);
-    int rowKeyPrefixLengthOfCurCell = CellUtil.copyRow(cell).length;
-    if (rowKeyPrefixLengthOfCurCell < rowKeyPrefixLength) {
-      throw new IOException("Row key length of cell is: " + rowKeyPrefixLengthOfCurCell
-        + " instead of expected: " + rowKeyPrefixLength);
-    }
-    return isCellValid;
-  }
-
-  private boolean shouldFinishSection(Cell cell) {
-    if (this.lastCell == null) {
-      return false;
-    }
-    else if (rowKeyPrefixLength == TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT) {
-      // In this situation using this writer makes no sense
-      return false;
-    }
-    return CellUtil.matchingRows(this.lastCell, (short) rowKeyPrefixLength, cell,
-            (short) rowKeyPrefixLength);
-  }
-
-  @Override
-  protected boolean shouldFinishBlock(Cell cell) {
-    boolean finishBlock = super.shouldFinishBlock(cell);
-    shouldFinishSection = shouldFinishSection(cell);
-    return finishBlock || shouldFinishSection;
-  }
-
-  @Override
-  protected void finishCurBlockAndStartNewBlock() throws IOException {
-    finishBlock();
-    writeInlineBlocks(shouldFinishSection);
-    if (shouldFinishSection) {
-      closeSection();
-      newSection();
-    }
-    newBlock();
   }
 
   private void newSection() throws IOException {
-    shouldFinishSection = false;
     sectionStartOffset = this.outputStream.getPos();
-    ((RowKeyPrefixIndexedBlockWriter) blockWriter).setSectionStartOffset(sectionStartOffset);
-    for (InlineBlockWriter ibw: inlineBlockWriters) {
-      ibw.setSectionStartOffset(sectionStartOffset);
-    }
-    this.sectionFileInfo = new HFileInfo();
+    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext,
+            singleStoreFileWriter, bloomType, maxKeysInBloomFilters, sectionStartOffset);
     sectionRowKeyPrefix = null;
+  }
+
+  private boolean shouldFinishSection(Cell cell) {
+    if (sectionRowKeyPrefix == null) {
+      return false;
+    }
+    if (rowKeyPrefixLength == TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT) {
+      return false;
+    }
+    return Bytes.equals(sectionRowKeyPrefix, 0, rowKeyPrefixLength,
+            CellUtil.copyRow(cell), 0, rowKeyPrefixLength);
+  }
+
+
+  private void checkCell(Cell cell) throws IOException {
+    int rowKeyPrefixLengthOfCurCell = CellUtil.copyRow(cell).length;
+    if (rowKeyPrefixLengthOfCurCell < rowKeyPrefixLength) {
+      throw new IOException("Row key length of cell is: " + rowKeyPrefixLengthOfCurCell
+              + " instead of expected: " + rowKeyPrefixLength);
+    }
   }
 
   @Override
   public void append(Cell cell) throws IOException {
-    super.append(cell);
+    checkCell(cell);
+    if (shouldFinishSection(cell)) {
+      closeSection();
+      newSection();
+    }
+    virtualHFileWriter.append(cell);
     if (sectionRowKeyPrefix == null) {
       sectionRowKeyPrefix = new byte[rowKeyPrefixLength];
       System.arraycopy(CellUtil.copyRow(cell), 0, sectionRowKeyPrefix, 0,
@@ -153,53 +116,121 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   }
 
   private void closeSection() throws IOException {
-    this.useSectionFileInfo = true;
-    singleStoreFileWriter.closeGeneralBloomFilter();
-    singleStoreFileWriter.closeDeleteFamilyBloomFilter();
-
-    // Write out the end of the data blocks, then write meta data blocks.
-    // followed by data block indexes (root and intermediate), fileinfo and meta block index.
-    // Then write bloom filter indexes followed by HFile trailer.
-
-    finishDataBlockAndInlineBlocks();
-    FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
-    writeMetadataBlocks();
-
-    // Load-on-open section.
-
-    // Data block index.
-    //
-    // In version 2, this section of the file starts with the root level data
-    // block index. We call a function that writes intermediate-level blocks
-    // first, then root level, and returns the offset of the root level block
-    // index.
-
-    long rootIndexOffset = dataBlockIndexWriter.writeIndexBlocks(outputStream);
-    trailer.setLoadOnOpenOffset(rootIndexOffset - sectionStartOffset);
-
-    writeMetaBlockIndex();
-
-    // File info
-    trailer.setFileInfoOffset(outputStream.getPos() - sectionStartOffset);
-    writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
-
-    writeBloomIndexes();
-
-    // Now finish off the trailer.
-    finishTrailer(trailer);
-    // Change absolute offsets to relative offsets
-    trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);
-    trailer.setLastDataBlockOffset(trailer.getLastDataBlockOffset() - sectionStartOffset);
+    virtualHFileWriter.close();
 
     // Now add entry in section index
     long nextSectionStartOffset = this.outputStream.getPos();
     int sizeOfCurSection = (int) (nextSectionStartOffset - sectionStartOffset);
     sectionIndexWriter.addEntry(sectionRowKeyPrefix, sectionStartOffset, sizeOfCurSection);
-    this.useSectionFileInfo = false;
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
+    closeSection();
 
+    FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
+
+    long sectionIndexOffset = sectionIndexWriter.writeMultiLevelIndex(outputStream);
+    trailer.setLoadOnOpenOffset(sectionIndexOffset);
+
+    // File info
+    trailer.setFileInfoOffset(outputStream.getPos());
+    writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
+
+    // Now finish off the trailer.
+
+
+    finishClose();
+  }
+
+  private static class VirtualHFileWriter extends HFileWriterImpl {
+
+    private final long sectionStartOffset;
+
+    public VirtualHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
+                              FSDataOutputStream outputStream, HFileContext fileContext,
+                              SingleStoreFileWriter singleStoreFileWriter,
+                              BloomType bloomType, long maxKeysInBloomFilters,
+                              long sectionStartOffset)
+            throws IOException {
+      super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter, bloomType,
+              maxKeysInBloomFilters);
+      this.sectionStartOffset = sectionStartOffset;
+    }
+
+    @Override
+    protected void finishInit(Configuration conf, BloomType bloomType) throws IOException {
+      boolean cacheIndexesOnWrite = cacheConf.shouldCacheIndexesOnWrite();
+      if (blockWriter != null) {
+        throw new IllegalStateException("finishInit called twice");
+      }
+      blockWriter =
+              new RowKeyPrefixIndexedBlockWriter(conf, blockEncoder, hFileContext,
+                      cacheConf.getByteBuffAllocator(), conf.getInt(MAX_BLOCK_SIZE_UNCOMPRESSED,
+                      hFileContext.getBlocksize() * 10));
+      ((RowKeyPrefixIndexedBlockWriter) blockWriter).setSectionStartOffset(sectionStartOffset);
+      // Data block index writer
+      dataBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter(blockWriter,
+              cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
+      dataBlockIndexWriter.setMaxChunkSize(HFileBlockIndex.getMaxChunkSize(conf));
+      dataBlockIndexWriter.setMinIndexNumEntries(HFileBlockIndex.getMinIndexNumEntries(conf));
+      inlineBlockWriters.add(dataBlockIndexWriter);
+      for (InlineBlockWriter ibw: inlineBlockWriters) {
+        ibw.setSectionStartOffset(sectionStartOffset);
+      }
+      // Meta data block index writer
+      metaBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter();
+      initBloomFilterWriters(conf, bloomType);
+      LOG.trace("Initialized with {}", cacheConf);
+    }
+
+    @Override
+    public void close() throws IOException {
+      boolean hasGeneralBloom = closeGeneralBloomFilter();
+      boolean hasDeleteFamilyBloom = closeDeleteFamilyBloomFilter();
+
+      // Write out the end of the data blocks, then write meta data blocks.
+      // followed by data block indexes (root and intermediate), fileinfo and meta block index.
+      // Then write bloom filter indexes followed by HFile trailer.
+
+      finishDataBlockAndInlineBlocks();
+      FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
+      writeMetadataBlocks();
+
+      // Load-on-open section.
+
+      // Data block index.
+      //
+      // In version 2, this section of the file starts with the root level data
+      // block index. We call a function that writes intermediate-level blocks
+      // first, then root level, and returns the offset of the root level block
+      // index.
+
+      long rootIndexOffset = dataBlockIndexWriter.writeIndexBlocks(outputStream);
+      trailer.setLoadOnOpenOffset(rootIndexOffset - sectionStartOffset);
+
+      writeMetaBlockIndex();
+
+      // File info
+      trailer.setFileInfoOffset(outputStream.getPos() - sectionStartOffset);
+      writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
+
+      writeBloomIndexes();
+
+      // Now finish off the trailer.
+      finishTrailer(trailer);
+      // Change absolute offsets to relative offsets
+      trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);
+      trailer.setLastDataBlockOffset(trailer.getLastDataBlockOffset() - sectionStartOffset);
+      finishClose();
+
+      // Log final Bloom filter statistics. This needs to be done after close()
+      // because compound Bloom filters might be finalized as part of closing.
+      if (LOG.isTraceEnabled()) {
+        LOG.trace(
+                (hasGeneralBloom ? "" : "NO ") + "General Bloom and " + (hasDeleteFamilyBloom ? "" : "NO ")
+                        + "DeleteFamily" + " was added to HFile " + getPath());
+      }
+    }
   }
 }

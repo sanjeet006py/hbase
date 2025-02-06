@@ -45,19 +45,29 @@ import org.apache.hadoop.hbase.io.crypto.Encryption;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.encoding.IndexBlockEncoding;
 import org.apache.hadoop.hbase.io.hfile.HFileBlock.BlockWritable;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.BloomContext;
+import org.apache.hadoop.hbase.util.BloomFilterFactory;
+import org.apache.hadoop.hbase.util.BloomFilterUtil;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CommonFSUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.RowBloomContext;
+import org.apache.hadoop.hbase.util.RowColBloomContext;
+import org.apache.hadoop.hbase.util.RowPrefixFixedLengthBloomContext;
 import org.apache.hadoop.io.Writable;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.BLOOM_FILTER_PARAM_KEY;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.BLOOM_FILTER_TYPE_KEY;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_FAMILY_COUNT;
 import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
 
 /**
@@ -173,11 +183,20 @@ public class HFileWriterImpl implements HFile.Writer {
   protected long maxMemstoreTS = 0;
 
   protected SingleStoreFileWriter singleStoreFileWriter;
-  protected boolean releaseBlockWriter = true;
+
+  protected BloomFilterWriter generalBloomFilterWriter;
+  protected BloomFilterWriter deleteFamilyBloomFilterWriter;
+  protected BloomType bloomType;
+  protected final long maxKeysInBloomFilters;
+  protected byte[] bloomParam = null;
+  protected long deleteFamilyCnt = 0;
+  protected BloomContext bloomContext = null;
+  protected BloomContext deleteFamilyBloomContext = null;
 
   public HFileWriterImpl(final Configuration conf, CacheConfig cacheConf, Path path,
     FSDataOutputStream outputStream, HFileContext fileContext,
-    SingleStoreFileWriter singleStoreFileWriter) {
+    SingleStoreFileWriter singleStoreFileWriter, BloomType bloomType, long maxKeysInBloomFilters)
+    throws IOException {
     this.outputStream = outputStream;
     this.path = path;
     this.name = path != null ? path.getName() : outputStream.toString();
@@ -199,8 +218,9 @@ public class HFileWriterImpl implements HFile.Writer {
     float encodeBlockSizeRatio = conf.getFloat(UNIFIED_ENCODED_BLOCKSIZE_RATIO, 0f);
     this.encodedBlockSizeLimit = (int) (hFileContext.getBlocksize() * encodeBlockSizeRatio);
     this.singleStoreFileWriter = singleStoreFileWriter;
+    this.maxKeysInBloomFilters = maxKeysInBloomFilters;
 
-    finishInit(conf);
+    finishInit(conf, bloomType);
     if (LOG.isTraceEnabled()) {
       LOG.trace("Writer" + (path != null ? " for " + path : "") + " initialized with cacheConf: "
         + cacheConf + " fileContext: " + fileContext);
@@ -227,7 +247,6 @@ public class HFileWriterImpl implements HFile.Writer {
    * Sets the file info offset in the trailer, finishes up populating fields in the file info, and
    * writes the file info into the given data output. The reason the data output is not always
    * {@link #outputStream} is that we store file info as a block in version 2.
-   * @param trailer fixed file trailer
    * @param out     the data output to write the file info to
    */
   protected final void writeFileInfo(DataOutputStream out)
@@ -317,7 +336,7 @@ public class HFileWriterImpl implements HFile.Writer {
   }
 
   /** Additional initialization steps */
-  protected void finishInit(final Configuration conf) {
+  protected void finishInit(final Configuration conf, BloomType bloomType) throws IOException {
     if (blockWriter != null) {
       throw new IllegalStateException("finishInit called twice");
     }
@@ -334,7 +353,60 @@ public class HFileWriterImpl implements HFile.Writer {
 
     // Meta data block index writer
     metaBlockIndexWriter = new HFileBlockIndex.BlockIndexWriter();
+    initBloomFilterWriters(conf, bloomType);
     LOG.trace("Initialized with {}", cacheConf);
+  }
+
+  protected void initBloomFilterWriters(Configuration conf, BloomType bloomType) throws IOException {
+    generalBloomFilterWriter = BloomFilterFactory.createGeneralBloomAtWrite(conf, cacheConf,
+      bloomType, (int) Math.min(maxKeysInBloomFilters, Integer.MAX_VALUE), this);
+
+    if (generalBloomFilterWriter != null) {
+      this.bloomType = bloomType;
+      this.bloomParam = BloomFilterUtil.getBloomFilterParam(bloomType, conf);
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Bloom filter type for " + path + ": " + this.bloomType + ", param: "
+          + (bloomType == BloomType.ROWPREFIX_FIXED_LENGTH
+          ? Bytes.toInt(bloomParam)
+          : Bytes.toStringBinary(bloomParam))
+          + ", " + generalBloomFilterWriter.getClass().getSimpleName());
+      }
+      // init bloom context
+      switch (bloomType) {
+        case ROW:
+          bloomContext =
+            new RowBloomContext(generalBloomFilterWriter, hFileContext.getCellComparator());
+          break;
+        case ROWCOL:
+          bloomContext =
+            new RowColBloomContext(generalBloomFilterWriter, hFileContext.getCellComparator());
+          break;
+        case ROWPREFIX_FIXED_LENGTH:
+          bloomContext = new RowPrefixFixedLengthBloomContext(generalBloomFilterWriter,
+            hFileContext.getCellComparator(), Bytes.toInt(bloomParam));
+          break;
+        default:
+          throw new IOException(
+            "Invalid Bloom filter type: " + bloomType + " (ROW or ROWCOL or ROWPREFIX expected)");
+      }
+    } else {
+      // Not using Bloom filters.
+      this.bloomType = BloomType.NONE;
+    }
+
+    // initialize delete family Bloom filter when there is NO RowCol Bloom filter
+    if (this.bloomType != BloomType.ROWCOL) {
+      this.deleteFamilyBloomFilterWriter = BloomFilterFactory.createDeleteBloomAtWrite(conf,
+        cacheConf, (int) Math.min(maxKeysInBloomFilters, Integer.MAX_VALUE), this);
+      deleteFamilyBloomContext =
+        new RowBloomContext(deleteFamilyBloomFilterWriter, hFileContext.getCellComparator());
+    } else {
+      deleteFamilyBloomFilterWriter = null;
+    }
+    if (deleteFamilyBloomFilterWriter != null && LOG.isTraceEnabled()) {
+      LOG.trace("Delete Family Bloom filter type for " + path + ": "
+        + deleteFamilyBloomFilterWriter.getClass().getSimpleName());
+    }
   }
 
   protected boolean shouldFinishBlock(Cell cell) {
@@ -662,6 +734,9 @@ public class HFileWriterImpl implements HFile.Writer {
 
   @Override
   public void close() throws IOException {
+    boolean hasGeneralBloom = closeGeneralBloomFilter();
+    boolean hasDeleteFamilyBloom = closeDeleteFamilyBloomFilter();
+
     if (outputStream == null) {
       return;
     }
@@ -697,6 +772,14 @@ public class HFileWriterImpl implements HFile.Writer {
     // Now finish off the trailer.
     finishTrailer(trailer);
     finishClose();
+
+    // Log final Bloom filter statistics. This needs to be done after close()
+    // because compound Bloom filters might be finalized as part of closing.
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(
+        (hasGeneralBloom ? "" : "NO ") + "General Bloom and " + (hasDeleteFamilyBloom ? "" : "NO ")
+          + "DeleteFamily" + " was added to HFile " + getPath());
+    }
   }
 
   protected void finishClose() throws IOException {
@@ -760,6 +843,8 @@ public class HFileWriterImpl implements HFile.Writer {
    */
   @Override
   public void append(final Cell cell) throws IOException {
+    appendGeneralBloomfilter(cell);
+    appendDeleteFamilyBloomFilter(cell);
     // checkKey uses comparator to check we are writing in order.
     boolean dupKey = checkKey(cell);
     if (!dupKey) {
@@ -795,6 +880,68 @@ public class HFileWriterImpl implements HFile.Writer {
     }
   }
 
+  private void appendGeneralBloomfilter(final Cell cell) throws IOException {
+    if (this.generalBloomFilterWriter != null) {
+      /*
+       * http://2.bp.blogspot.com/_Cib_A77V54U/StZMrzaKufI/AAAAAAAAADo/ZhK7bGoJdMQ/s400/KeyValue.
+       * png Key = RowLen + Row + FamilyLen + Column [Family + Qualifier] + Timestamp 3 Types of
+       * Filtering: 1. Row = Row 2. RowCol = Row + Qualifier 3. RowPrefixFixedLength = Fixed
+       * Length Row Prefix
+       */
+      bloomContext.writeBloom(cell);
+    }
+  }
+
+  private void appendDeleteFamilyBloomFilter(final Cell cell) throws IOException {
+    if (!PrivateCellUtil.isDeleteFamily(cell) && !PrivateCellUtil.isDeleteFamilyVersion(cell)) {
+      return;
+    }
+
+    // increase the number of delete family in the store file
+    deleteFamilyCnt++;
+    if (this.deleteFamilyBloomFilterWriter != null) {
+      deleteFamilyBloomContext.writeBloom(cell);
+    }
+  }
+
+  private boolean closeBloomFilter(BloomFilterWriter bfw) throws IOException {
+    boolean haveBloom = (bfw != null && bfw.getKeyCount() > 0);
+    if (haveBloom) {
+      bfw.compactBloom();
+    }
+    return haveBloom;
+  }
+
+  public boolean closeGeneralBloomFilter() throws IOException {
+    boolean hasGeneralBloom = closeBloomFilter(generalBloomFilterWriter);
+
+    // add the general Bloom filter writer and append file info
+    if (hasGeneralBloom) {
+      this.addGeneralBloomFilter(generalBloomFilterWriter);
+      this.appendFileInfo(BLOOM_FILTER_TYPE_KEY, Bytes.toBytes(bloomType.toString()));
+      if (bloomParam != null) {
+        this.appendFileInfo(BLOOM_FILTER_PARAM_KEY, bloomParam);
+      }
+      bloomContext.addLastBloomKey(this);
+    }
+    return hasGeneralBloom;
+  }
+
+  public boolean closeDeleteFamilyBloomFilter() throws IOException {
+    boolean hasDeleteFamilyBloom = closeBloomFilter(deleteFamilyBloomFilterWriter);
+
+    // add the delete family Bloom filter writer
+    if (hasDeleteFamilyBloom) {
+      this.addDeleteFamilyBloomFilter(deleteFamilyBloomFilterWriter);
+    }
+
+    // append file info about the number of delete family kvs
+    // even if there is no delete family Bloom.
+    this.appendFileInfo(DELETE_FAMILY_COUNT, Bytes.toBytes(this.deleteFamilyCnt));
+
+    return hasDeleteFamilyBloom;
+  }
+
   @Override
   public void beforeShipped() throws IOException {
     this.blockWriter.beforeShipped();
@@ -807,6 +954,12 @@ public class HFileWriterImpl implements HFile.Writer {
     }
     if (this.lastCellOfPreviousBlock != null) {
       this.lastCellOfPreviousBlock = KeyValueUtil.toNewKeyCell(this.lastCellOfPreviousBlock);
+    }
+    if (generalBloomFilterWriter != null) {
+      generalBloomFilterWriter.beforeShipped();
+    }
+    if (deleteFamilyBloomFilterWriter != null) {
+      deleteFamilyBloomFilterWriter.beforeShipped();
     }
   }
 
@@ -893,5 +1046,9 @@ public class HFileWriterImpl implements HFile.Writer {
     long startTime = EnvironmentEdgeManager.currentTime();
     trailer.serialize(outputStream);
     HFile.updateWriteLatency(EnvironmentEdgeManager.currentTime() - startTime);
+  }
+
+  public BloomFilterWriter getGeneralBloomWriter() {
+    return generalBloomFilterWriter;
   }
 }

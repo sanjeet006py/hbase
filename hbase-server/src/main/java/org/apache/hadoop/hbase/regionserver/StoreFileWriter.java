@@ -490,7 +490,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
     appendCell(cell);
   }
 
-  private static final class SingleStoreFileWriter {
+  public static final class SingleStoreFileWriter {
     private final BloomFilterWriter generalBloomFilterWriter;
     private final BloomFilterWriter deleteFamilyBloomFilterWriter;
     private final BloomType bloomType;
@@ -527,7 +527,8 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       // TODO : Change all writers to be specifically created for compaction context
       writer =
         HFile.getWriterFactory(conf, cacheConf).withPath(fs, path).withFavoredNodes(favoredNodes)
-          .withFileContext(fileContext).withShouldDropCacheBehind(shouldDropCacheBehind).create();
+          .withFileContext(fileContext).withShouldDropCacheBehind(shouldDropCacheBehind)
+          .withSingleStoreFileWriter(this).create();
 
       generalBloomFilterWriter = BloomFilterFactory.createGeneralBloomAtWrite(conf, cacheConf,
         bloomType, (int) Math.min(maxKeys, Integer.MAX_VALUE), writer);
@@ -749,7 +750,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       return haveBloom;
     }
 
-    private boolean closeGeneralBloomFilter() throws IOException {
+    public boolean closeGeneralBloomFilter() throws IOException {
       boolean hasGeneralBloom = closeBloomFilter(generalBloomFilterWriter);
 
       // add the general Bloom filter writer and append file info
@@ -764,7 +765,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       return hasGeneralBloom;
     }
 
-    private boolean closeDeleteFamilyBloomFilter() throws IOException {
+    public boolean closeDeleteFamilyBloomFilter() throws IOException {
       boolean hasDeleteFamilyBloom = closeBloomFilter(deleteFamilyBloomFilterWriter);
 
       // add the delete family Bloom filter writer

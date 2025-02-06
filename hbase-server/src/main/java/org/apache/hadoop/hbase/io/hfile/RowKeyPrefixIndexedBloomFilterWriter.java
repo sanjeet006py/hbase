@@ -20,6 +20,7 @@ public class RowKeyPrefixIndexedBloomFilterWriter extends CompoundBloomFilterWri
   @Override
   public void setSectionStartOffset(long sectionStartOffset) {
     this.sectionStartOffset = sectionStartOffset;
+    bloomBlockIndexWriter.setSectionStartOffset(sectionStartOffset);
   }
 
   @Override

@@ -5,8 +5,9 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+
+import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +24,15 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   private final int rowKeyPrefixLength;
   private long sectionStartOffset = SECTION_START_OFFSET_ON_WRITER_INIT;
   private boolean shouldFinishSection = false;
+  private RowKeyPrefixIndexedBlockIndexWriter sectionIndexWriter;
+  private byte[] sectionRowKeyPrefix = null;
+  private HFileInfo sectionFileInfo = new HFileInfo();
+  private boolean useSectionFileInfo = false;
 
   public RowKeyPrefixIndexedHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
-    FSDataOutputStream outputStream, HFileContext fileContext) {
-    super(conf, cacheConf, path, outputStream, fileContext);
+                                        FSDataOutputStream outputStream, HFileContext fileContext,
+                                        SingleStoreFileWriter singleStoreFileWriter) {
+    super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
   }
 
@@ -39,7 +45,18 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     public HFile.Writer create()
       throws IOException {
       preCreate();
-      return new RowKeyPrefixIndexedHFileWriter(conf, cacheConf, path, ostream, fileContext);
+      return new RowKeyPrefixIndexedHFileWriter(conf, cacheConf, path, ostream, fileContext,
+              singleStoreFileWriter);
+    }
+  }
+
+  @Override
+  protected HFileInfo getFileInfo() {
+    if (useSectionFileInfo) {
+      return sectionFileInfo;
+    }
+    else {
+      return fileInfo;
     }
   }
 
@@ -67,6 +84,9 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
     // Meta data block index writer
     metaBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter();
+    // Section index writer to store index of row key prefixes and section start offset + size
+    sectionIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter(blockWriter,
+            cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
     LOG.trace("Initialized with {}", cacheConf);
   }
 
@@ -105,8 +125,81 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     finishBlock();
     writeInlineBlocks(shouldFinishSection);
     if (shouldFinishSection) {
-      close();
+      closeSection();
+      newSection();
     }
     newBlock();
+  }
+
+  private void newSection() throws IOException {
+    shouldFinishSection = false;
+    sectionStartOffset = this.outputStream.getPos();
+    ((RowKeyPrefixIndexedBlockWriter) blockWriter).setSectionStartOffset(sectionStartOffset);
+    for (InlineBlockWriter ibw: inlineBlockWriters) {
+      ibw.setSectionStartOffset(sectionStartOffset);
+    }
+    this.sectionFileInfo = new HFileInfo();
+    sectionRowKeyPrefix = null;
+  }
+
+  @Override
+  public void append(Cell cell) throws IOException {
+    super.append(cell);
+    if (sectionRowKeyPrefix == null) {
+      sectionRowKeyPrefix = new byte[rowKeyPrefixLength];
+      System.arraycopy(CellUtil.copyRow(cell), 0, sectionRowKeyPrefix, 0,
+              rowKeyPrefixLength);
+    }
+  }
+
+  private void closeSection() throws IOException {
+    this.useSectionFileInfo = true;
+    singleStoreFileWriter.closeGeneralBloomFilter();
+    singleStoreFileWriter.closeDeleteFamilyBloomFilter();
+
+    // Write out the end of the data blocks, then write meta data blocks.
+    // followed by data block indexes (root and intermediate), fileinfo and meta block index.
+    // Then write bloom filter indexes followed by HFile trailer.
+
+    finishDataBlockAndInlineBlocks();
+    FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
+    writeMetadataBlocks();
+
+    // Load-on-open section.
+
+    // Data block index.
+    //
+    // In version 2, this section of the file starts with the root level data
+    // block index. We call a function that writes intermediate-level blocks
+    // first, then root level, and returns the offset of the root level block
+    // index.
+
+    long rootIndexOffset = dataBlockIndexWriter.writeIndexBlocks(outputStream);
+    trailer.setLoadOnOpenOffset(rootIndexOffset - sectionStartOffset);
+
+    writeMetaBlockIndex();
+
+    // File info
+    trailer.setFileInfoOffset(outputStream.getPos() - sectionStartOffset);
+    writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
+
+    writeBloomIndexes();
+
+    // Now finish off the trailer.
+    finishTrailer(trailer);
+    // Change absolute offsets to relative offsets
+    trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);
+    trailer.setLastDataBlockOffset(trailer.getLastDataBlockOffset() - sectionStartOffset);
+
+    // Now add entry in section index
+    long nextSectionStartOffset = this.outputStream.getPos();
+    int sizeOfCurSection = (int) (nextSectionStartOffset - sectionStartOffset);
+    sectionIndexWriter.addEntry(sectionRowKeyPrefix, sectionStartOffset, sizeOfCurSection);
+    this.useSectionFileInfo = false;
+  }
+
+  @Override
+  public void close() {
+
   }
 }

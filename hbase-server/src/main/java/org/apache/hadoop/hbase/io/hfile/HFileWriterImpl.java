@@ -58,6 +58,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
+
 /**
  * Common functionality needed by all versions of {@link HFile} writers.
  */
@@ -81,7 +83,7 @@ public class HFileWriterImpl implements HFile.Writer {
   protected FSDataOutputStream outputStream;
 
   /** True if we opened the <code>outputStream</code> (and so will close it). */
-  protected final boolean closeOutputStream;
+  protected boolean closeOutputStream;
 
   /** A "file info" block: a key-value map of file-wide metadata. */
   protected HFileInfo fileInfo = new HFileInfo();
@@ -166,12 +168,16 @@ public class HFileWriterImpl implements HFile.Writer {
   protected Cell lastCellOfPreviousBlock = null;
 
   /** Additional data items to be written to the "load-on-open" section. */
-  private List<BlockWritable> additionalLoadOnOpenData = new ArrayList<>();
+  protected List<BlockWritable> additionalLoadOnOpenData = new ArrayList<>();
 
   protected long maxMemstoreTS = 0;
 
+  protected SingleStoreFileWriter singleStoreFileWriter;
+  protected boolean releaseBlockWriter = true;
+
   public HFileWriterImpl(final Configuration conf, CacheConfig cacheConf, Path path,
-    FSDataOutputStream outputStream, HFileContext fileContext) {
+    FSDataOutputStream outputStream, HFileContext fileContext,
+    SingleStoreFileWriter singleStoreFileWriter) {
     this.outputStream = outputStream;
     this.path = path;
     this.name = path != null ? path.getName() : outputStream.toString();
@@ -192,12 +198,17 @@ public class HFileWriterImpl implements HFile.Writer {
     this.cacheConf = cacheConf;
     float encodeBlockSizeRatio = conf.getFloat(UNIFIED_ENCODED_BLOCKSIZE_RATIO, 0f);
     this.encodedBlockSizeLimit = (int) (hFileContext.getBlocksize() * encodeBlockSizeRatio);
+    this.singleStoreFileWriter = singleStoreFileWriter;
 
     finishInit(conf);
     if (LOG.isTraceEnabled()) {
       LOG.trace("Writer" + (path != null ? " for " + path : "") + " initialized with cacheConf: "
         + cacheConf + " fileContext: " + fileContext);
     }
+  }
+
+  protected HFileInfo getFileInfo() {
+    return fileInfo;
   }
 
   /**
@@ -209,7 +220,7 @@ public class HFileWriterImpl implements HFile.Writer {
    */
   @Override
   public void appendFileInfo(final byte[] k, final byte[] v) throws IOException {
-    fileInfo.append(k, v, true);
+    getFileInfo().append(k, v, true);
   }
 
   /**
@@ -219,13 +230,14 @@ public class HFileWriterImpl implements HFile.Writer {
    * @param trailer fixed file trailer
    * @param out     the data output to write the file info to
    */
-  protected final void writeFileInfo(FixedFileTrailer trailer, DataOutputStream out)
+  protected final void writeFileInfo(DataOutputStream out)
     throws IOException {
-    trailer.setFileInfoOffset(outputStream.getPos());
     finishFileInfo();
     long startTime = EnvironmentEdgeManager.currentTime();
-    fileInfo.write(out);
+    getFileInfo().write(out);
     HFile.updateWriteLatency(EnvironmentEdgeManager.currentTime() - startTime);
+    blockWriter.writeHeaderAndData(outputStream);
+    totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
   }
 
   public long getPos() throws IOException {
@@ -607,23 +619,7 @@ public class HFileWriterImpl implements HFile.Writer {
     metaData.add(i, content);
   }
 
-  @Override
-  public void close() throws IOException {
-    if (outputStream == null) {
-      return;
-    }
-    // Save data block encoder metadata in the file info.
-    blockEncoder.saveMetadata(this);
-    // Save index block encoder metadata in the file info.
-    indexBlockEncoder.saveMetadata(this);
-    // Write out the end of the data blocks, then write meta data blocks.
-    // followed by fileinfo, data block index and meta block index.
-
-    finishBlock();
-    writeInlineBlocks(true);
-
-    FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
-
+  protected void writeMetadataBlocks() throws IOException {
     // Write out the metadata blocks if any.
     if (!metaNames.isEmpty()) {
       for (int i = 0; i < metaNames.size(); ++i) {
@@ -641,6 +637,42 @@ public class HFileWriterImpl implements HFile.Writer {
           blockWriter.getOnDiskSizeWithHeader());
       }
     }
+  }
+
+  protected void writeMetaBlockIndex() throws IOException {
+    // Meta block index.
+    metaBlockIndexWriter.writeSingleLevelIndex(blockWriter.startWriting(BlockType.ROOT_INDEX),
+      "meta");
+    blockWriter.writeHeaderAndData(outputStream);
+    totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
+  }
+
+  protected void finishDataBlockAndInlineBlocks() throws IOException {
+    finishBlock();
+    writeInlineBlocks(true);
+  }
+
+  protected void writeBloomIndexes() throws IOException {
+    // Load-on-open data supplied by higher levels, e.g. Bloom filters.
+    for (BlockWritable w : additionalLoadOnOpenData) {
+      blockWriter.writeBlock(w, outputStream);
+      totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (outputStream == null) {
+      return;
+    }
+    // Write out the end of the data blocks, then write meta data blocks.
+    // followed by data block indexes (root and intermediate), fileinfo and meta block index.
+    // Then write bloom filter indexes followed by HFile trailer.
+    finishDataBlockAndInlineBlocks();
+
+    FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
+
+    writeMetadataBlocks();
 
     // Load-on-open section.
 
@@ -654,38 +686,24 @@ public class HFileWriterImpl implements HFile.Writer {
     long rootIndexOffset = dataBlockIndexWriter.writeIndexBlocks(outputStream);
     trailer.setLoadOnOpenOffset(rootIndexOffset);
 
-    // Meta block index.
-    metaBlockIndexWriter.writeSingleLevelIndex(blockWriter.startWriting(BlockType.ROOT_INDEX),
-      "meta");
-    blockWriter.writeHeaderAndData(outputStream);
-    totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
-
-    if (this.hFileContext.isIncludesMvcc()) {
-      appendFileInfo(MAX_MEMSTORE_TS_KEY, Bytes.toBytes(maxMemstoreTS));
-      appendFileInfo(KEY_VALUE_VERSION, Bytes.toBytes(KEY_VALUE_VER_WITH_MEMSTORE));
-    }
+    writeMetaBlockIndex();
 
     // File info
-    writeFileInfo(trailer, blockWriter.startWriting(BlockType.FILE_INFO));
-    blockWriter.writeHeaderAndData(outputStream);
-    totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
+    trailer.setFileInfoOffset(outputStream.getPos());
+    writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
 
-    // Load-on-open data supplied by higher levels, e.g. Bloom filters.
-    for (BlockWritable w : additionalLoadOnOpenData) {
-      blockWriter.writeBlock(w, outputStream);
-      totalUncompressedBytes += blockWriter.getUncompressedSizeWithHeader();
-    }
+    writeBloomIndexes();
 
     // Now finish off the trailer.
-    trailer.setNumDataIndexLevels(dataBlockIndexWriter.getNumLevels());
-    trailer.setUncompressedDataIndexSize(dataBlockIndexWriter.getTotalUncompressedSize());
-    trailer.setFirstDataBlockOffset(firstDataBlockOffset);
-    trailer.setLastDataBlockOffset(lastDataBlockOffset);
-    trailer.setComparatorClass(this.hFileContext.getCellComparator().getClass());
-    trailer.setDataIndexCount(dataBlockIndexWriter.getNumRootEntries());
+    finishTrailer(trailer);
+    finishClose();
+  }
 
-    finishClose(trailer);
-
+  protected void finishClose() throws IOException {
+    if (closeOutputStream) {
+      outputStream.close();
+      outputStream = null;
+    }
     blockWriter.release();
   }
 
@@ -797,27 +815,35 @@ public class HFileWriterImpl implements HFile.Writer {
   }
 
   protected void finishFileInfo() throws IOException {
+    // Save data block encoder metadata in the file info.
+    blockEncoder.saveMetadata(this);
+    // Save index block encoder metadata in the file info.
+    indexBlockEncoder.saveMetadata(this);
+    if (this.hFileContext.isIncludesMvcc()) {
+      appendFileInfo(MAX_MEMSTORE_TS_KEY, Bytes.toBytes(maxMemstoreTS));
+      appendFileInfo(KEY_VALUE_VERSION, Bytes.toBytes(KEY_VALUE_VER_WITH_MEMSTORE));
+    }
     if (lastCell != null) {
       // Make a copy. The copy is stuffed into our fileinfo map. Needs a clean
       // byte buffer. Won't take a tuple.
       byte[] lastKey = PrivateCellUtil.getCellKeySerializedAsKeyValueKey(this.lastCell);
-      fileInfo.append(HFileInfo.LASTKEY, lastKey, false);
+      getFileInfo().append(HFileInfo.LASTKEY, lastKey, false);
     }
 
     // Average key length.
     int avgKeyLen = entryCount == 0 ? 0 : (int) (totalKeyLength / entryCount);
-    fileInfo.append(HFileInfo.AVG_KEY_LEN, Bytes.toBytes(avgKeyLen), false);
-    fileInfo.append(HFileInfo.CREATE_TIME_TS, Bytes.toBytes(hFileContext.getFileCreateTime()),
+    getFileInfo().append(HFileInfo.AVG_KEY_LEN, Bytes.toBytes(avgKeyLen), false);
+    getFileInfo().append(HFileInfo.CREATE_TIME_TS, Bytes.toBytes(hFileContext.getFileCreateTime()),
       false);
 
     // Average value length.
     int avgValueLen = entryCount == 0 ? 0 : (int) (totalValueLength / entryCount);
-    fileInfo.append(HFileInfo.AVG_VALUE_LEN, Bytes.toBytes(avgValueLen), false);
+    getFileInfo().append(HFileInfo.AVG_VALUE_LEN, Bytes.toBytes(avgValueLen), false);
 
     // Biggest cell.
     if (keyOfBiggestCell != null) {
-      fileInfo.append(HFileInfo.KEY_OF_BIGGEST_CELL, keyOfBiggestCell, false);
-      fileInfo.append(HFileInfo.LEN_OF_BIGGEST_CELL, Bytes.toBytes(lenOfBiggestCell), false);
+      getFileInfo().append(HFileInfo.KEY_OF_BIGGEST_CELL, keyOfBiggestCell, false);
+      getFileInfo().append(HFileInfo.LEN_OF_BIGGEST_CELL, Bytes.toBytes(lenOfBiggestCell), false);
       LOG.debug("Len of the biggest cell in {} is {}, key is {}",
         this.getPath() == null ? "" : this.getPath().toString(), lenOfBiggestCell,
         CellUtil.toString(new KeyValue.KeyOnlyKeyValue(keyOfBiggestCell), false));
@@ -826,22 +852,28 @@ public class HFileWriterImpl implements HFile.Writer {
     if (hFileContext.isIncludesTags()) {
       // When tags are not being written in this file, MAX_TAGS_LEN is excluded
       // from the FileInfo
-      fileInfo.append(HFileInfo.MAX_TAGS_LEN, Bytes.toBytes(this.maxTagsLength), false);
+      getFileInfo().append(HFileInfo.MAX_TAGS_LEN, Bytes.toBytes(this.maxTagsLength), false);
       boolean tagsCompressed = (hFileContext.getDataBlockEncoding() != DataBlockEncoding.NONE)
         && hFileContext.isCompressTags();
-      fileInfo.append(HFileInfo.TAGS_COMPRESSED, Bytes.toBytes(tagsCompressed), false);
+      getFileInfo().append(HFileInfo.TAGS_COMPRESSED, Bytes.toBytes(tagsCompressed), false);
     }
   }
 
   protected int getMajorVersion() {
-    return 3;
+    return 4;
   }
 
   protected int getMinorVersion() {
     return HFileReaderImpl.MAX_MINOR_VERSION;
   }
 
-  protected void finishClose(FixedFileTrailer trailer) throws IOException {
+  protected void finishTrailer(FixedFileTrailer trailer) throws IOException {
+    trailer.setNumDataIndexLevels(dataBlockIndexWriter.getNumLevels());
+    trailer.setUncompressedDataIndexSize(dataBlockIndexWriter.getTotalUncompressedSize());
+    trailer.setFirstDataBlockOffset(firstDataBlockOffset);
+    trailer.setLastDataBlockOffset(lastDataBlockOffset);
+    trailer.setComparatorClass(this.hFileContext.getCellComparator().getClass());
+    trailer.setDataIndexCount(dataBlockIndexWriter.getNumRootEntries());
     // Write out encryption metadata before finalizing if we have a valid crypto context
     Encryption.Context cryptoContext = hFileContext.getEncryptionContext();
     if (cryptoContext != Encryption.Context.NONE) {
@@ -861,10 +893,5 @@ public class HFileWriterImpl implements HFile.Writer {
     long startTime = EnvironmentEdgeManager.currentTime();
     trailer.serialize(outputStream);
     HFile.updateWriteLatency(EnvironmentEdgeManager.currentTime() - startTime);
-
-    if (closeOutputStream) {
-      outputStream.close();
-      outputStream = null;
-    }
   }
 }

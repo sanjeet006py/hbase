@@ -51,6 +51,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
+
 import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
 
 /**
@@ -259,6 +261,7 @@ public final class HFile {
     protected InetSocketAddress[] favoredNodes;
     protected HFileContext fileContext;
     protected boolean shouldDropBehind = false;
+    protected SingleStoreFileWriter singleStoreFileWriter;
 
     WriterFactory(Configuration conf, CacheConfig cacheConf) {
       this.conf = conf;
@@ -295,6 +298,11 @@ public final class HFile {
       return this;
     }
 
+    public WriterFactory withSingleStoreFileWriter(SingleStoreFileWriter singleStoreFileWriter) {
+      this.singleStoreFileWriter = singleStoreFileWriter;
+      return this;
+    }
+
     protected void preCreate() throws IOException {
       if ((path != null ? 1 : 0) + (ostream != null ? 1 : 0) != 1) {
         throw new AssertionError("Please specify exactly one of " + "filesystem/path or path");
@@ -312,7 +320,8 @@ public final class HFile {
 
     public Writer create() throws IOException {
       preCreate();
-      return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext);
+      return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext,
+        singleStoreFileWriter);
     }
   }
 

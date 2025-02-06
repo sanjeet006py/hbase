@@ -933,13 +933,13 @@ public class HFileBlockIndex {
      * block index. After all levels of the index were written by
      * {@link #writeIndexBlocks(FSDataOutputStream)}, this contains the final root-level index.
      */
-    private BlockIndexChunk rootChunk = new BlockIndexChunkImpl();
+    private BlockIndexChunk rootChunk = newChunk();
 
     /**
      * Current leaf-level chunk. New entries referencing data blocks get added to this chunk until
      * it grows large enough to be written to disk.
      */
-    private BlockIndexChunk curInlineChunk = new BlockIndexChunkImpl();
+    private BlockIndexChunk curInlineChunk = newChunk();
 
     /**
      * The number of block index levels. This is one if there is only root level (even empty), two
@@ -1010,6 +1010,10 @@ public class HFileBlockIndex {
         indexBlockEncoder != null ? indexBlockEncoder : NoOpIndexBlockEncoder.INSTANCE;
     }
 
+    protected BlockIndexChunk newChunk() {
+      return new BlockIndexChunkImpl();
+    }
+
     public void setMaxChunkSize(int maxChunkSize) {
       if (maxChunkSize <= 0) {
         throw new IllegalArgumentException("Invalid maximum index block size");
@@ -1022,6 +1026,18 @@ public class HFileBlockIndex {
         throw new IllegalArgumentException("Invalid maximum index level, should be >= 2");
       }
       this.minIndexNumEntries = minIndexNumEntries;
+    }
+
+    public long writeMultiLevelIndex(FSDataOutputStream out) throws IOException {
+      if (rootChunk != null && rootChunk.getNumEntries() > 0) {
+        throw new IOException("Root chunk already has " + rootChunk.getNumEntries());
+      }
+      if (curInlineChunk == null) {
+        throw new IOException("Trying to write multi-level index but inline chunk is null");
+      }
+      rootChunk = curInlineChunk;
+      curInlineChunk = newChunk();
+      return writeIndexBlocks(out);
     }
 
     /**
@@ -1058,6 +1074,9 @@ public class HFileBlockIndex {
           numLevels += 1;
         }
       }
+      else {
+        curInlineChunk = newChunk();
+      }
 
       // write the root level
       long rootLevelIndexPos = out.getPos();
@@ -1090,6 +1109,8 @@ public class HFileBlockIndex {
           + StringUtils.humanReadableInt(this.totalBlockOnDiskSize) + " on-disk size, "
           + StringUtils.humanReadableInt(totalBlockUncompressedSize) + " total uncompressed size.");
       }
+      rootChunk.clear();
+      curInlineChunk.clear();
       return rootLevelIndexPos;
     }
 
@@ -1108,13 +1129,14 @@ public class HFileBlockIndex {
         throw new IOException("Root-level entries already added in " + "single-level mode");
 
       rootChunk = curInlineChunk;
-      curInlineChunk = new BlockIndexChunkImpl();
+      curInlineChunk = newChunk();
 
       if (LOG.isTraceEnabled()) {
         LOG.trace("Wrote a single-level " + description + " index with " + rootChunk.getNumEntries()
           + " entries, " + rootChunk.getRootSize() + " bytes");
       }
       indexBlockEncoder.encode(rootChunk, true, out);
+      rootChunk.clear();
     }
 
     /**
@@ -1129,10 +1151,10 @@ public class HFileBlockIndex {
     private BlockIndexChunk writeIntermediateLevel(FSDataOutputStream out,
       BlockIndexChunk currentLevel) throws IOException {
       // Entries referencing intermediate-level blocks we are about to create.
-      BlockIndexChunk parent = new BlockIndexChunkImpl();
+      BlockIndexChunk parent = newChunk();
 
       // The current intermediate-level block index chunk.
-      BlockIndexChunk curChunk = new BlockIndexChunkImpl();
+      BlockIndexChunk curChunk = newChunk();
 
       for (int i = 0; i < currentLevel.getNumEntries(); ++i) {
         curChunk.add(currentLevel.getBlockKey(i), currentLevel.getBlockOffset(i),

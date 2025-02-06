@@ -220,6 +220,18 @@ public class CompoundBloomFilterWriter extends CompoundBloomFilterBase
     bloomBlockIndexWriter.addEntry(readyChunk.firstKey, offset, onDiskSize);
   }
 
+  public void reset() {
+    prevCell = null;
+    prevChunk = null;
+    totalByteSize = 0;
+    totalKeyCount = 0;
+    numChunks = 0;
+    readyChunks.clear();
+    chunk = null;
+    firstKeyInChunk = null;
+    totalMaxKeys = 0;
+  }
+
   @Override
   public BlockType getInlineBlockType() {
     return BlockType.BLOOM_CHUNK;
@@ -262,6 +274,7 @@ public class CompoundBloomFilterWriter extends CompoundBloomFilterBase
 
       // Write a single-level index without compression or block header.
       bloomBlockIndexWriter.writeSingleLevelIndex(out, "Bloom filter");
+      reset();
     }
   }
 

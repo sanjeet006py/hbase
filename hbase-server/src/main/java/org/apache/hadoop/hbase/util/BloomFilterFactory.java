@@ -204,10 +204,18 @@ public final class BloomFilterFactory {
     float err = getErrorRate(conf);
 
     int maxFold = getMaxFold(conf);
+    int version = HFile.getFormatVersion(conf);
     // In case of compound Bloom filters we ignore the maxKeys hint.
-    CompoundBloomFilterWriter bloomWriter =
-      new CompoundBloomFilterWriter(getBloomBlockSize(conf), err, Hash.getHashType(conf), maxFold,
-        cacheConf.shouldCacheBloomsOnWrite(), null, BloomType.ROW);
+    CompoundBloomFilterWriter bloomWriter;
+    if (version == 4) {
+      bloomWriter = new RowKeyPrefixIndexedBloomFilterWriter(getBloomBlockSize(conf), err,
+        Hash.getHashType(conf), maxFold, cacheConf.shouldCacheBloomsOnWrite(), null, BloomType.ROW);
+    }
+    else {
+      bloomWriter =
+        new CompoundBloomFilterWriter(getBloomBlockSize(conf), err, Hash.getHashType(conf), maxFold,
+          cacheConf.shouldCacheBloomsOnWrite(), null, BloomType.ROW);
+    }
     writer.addInlineBlockWriter(bloomWriter);
     return bloomWriter;
   }

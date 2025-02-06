@@ -13,6 +13,11 @@ public class RowKeyPrefixIndexedBlockIndexWriter extends HFileBlockIndex.BlockIn
   }
 
   @Override
+  protected BlockIndexChunk newChunk() {
+    return new RowKeyPrefixIndexedBlockIndexChunk(this);
+  }
+
+  @Override
   public void setSectionStartOffset(long sectionStartOffset) {
     this.sectionStartOffset = sectionStartOffset;
   }
@@ -22,13 +27,20 @@ public class RowKeyPrefixIndexedBlockIndexWriter extends HFileBlockIndex.BlockIn
     return sectionStartOffset;
   }
 
-  @Override
-  public void addEntry(byte[] firstKey, long blockOffset, int blockDataSize) {
-    super.addEntry(firstKey, blockOffset - sectionStartOffset, blockDataSize);
-  }
+  static class RowKeyPrefixIndexedBlockIndexChunk extends HFileBlockIndex.BlockIndexChunkImpl {
 
-  @Override
-  public void blockWritten(long offset, int onDiskSize, int uncompressedSize) {
-    super.blockWritten(offset - sectionStartOffset, onDiskSize, uncompressedSize);
+    private final RowKeyPrefixIndexedBlockIndexWriter indexWriter;
+
+    public RowKeyPrefixIndexedBlockIndexChunk(RowKeyPrefixIndexedBlockIndexWriter indexWriter) {
+      super();
+      this.indexWriter = indexWriter;
+    }
+
+    @Override
+    public void add(byte[] firstKey, long blockOffset, int onDiskDataSize,
+      long curTotalNumSubEntries) {
+      super.add(firstKey, blockOffset - indexWriter.getSectionStartOffset(),
+        onDiskDataSize);
+    }
   }
 }

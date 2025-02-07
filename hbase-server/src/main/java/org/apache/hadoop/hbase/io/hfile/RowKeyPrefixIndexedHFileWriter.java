@@ -6,18 +6,19 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
-
-import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
-
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
+import static org.apache.hadoop.hbase.io.hfile.BlockCompressedSizePredicator.
+        MAX_BLOCK_SIZE_UNCOMPRESSED;
+
 import java.io.IOException;
 
-import static org.apache.hadoop.hbase.io.hfile.BlockCompressedSizePredicator.MAX_BLOCK_SIZE_UNCOMPRESSED;
-
+@InterfaceAudience.Private
 public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   private static final Logger LOG = LoggerFactory.getLogger(RowKeyPrefixIndexedHFileWriter.class);
 
@@ -43,6 +44,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
             maxKeysInBloomFilters);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
     this.conf = conf;
+    assert rowKeyPrefixLength != TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
   }
 
   public static class WriterFactory extends HFile.WriterFactory {
@@ -66,25 +68,23 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
             cacheConf.getByteBuffAllocator(), conf.getInt(MAX_BLOCK_SIZE_UNCOMPRESSED,
                     hFileContext.getBlocksize() * 10));
     virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext
-            , singleStoreFileWriter, bloomType, maxKeysInBloomFilters,
-            SECTION_START_OFFSET_ON_WRITER_INIT);
+            , singleStoreFileWriter, bloomType, maxKeysInBloomFilters, this);
     // Section index writer to store index of row key prefixes and section start offset + size
     sectionIndexWriter = new HFileBlockIndex.BlockIndexWriter(blockWriter,
             cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
+    // To reuse finishTrailer in super class
+    dataBlockIndexWriter = sectionIndexWriter;
   }
 
   private void newSection() throws IOException {
     sectionStartOffset = this.outputStream.getPos();
     virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext,
-            singleStoreFileWriter, bloomType, maxKeysInBloomFilters, sectionStartOffset);
+            singleStoreFileWriter, bloomType, maxKeysInBloomFilters, this);
     sectionRowKeyPrefix = null;
   }
 
   private boolean shouldFinishSection(Cell cell) {
     if (sectionRowKeyPrefix == null) {
-      return false;
-    }
-    if (rowKeyPrefixLength == TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT) {
       return false;
     }
     return Bytes.equals(sectionRowKeyPrefix, 0, rowKeyPrefixLength,
@@ -120,6 +120,9 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
     // Now add entry in section index
     long nextSectionStartOffset = this.outputStream.getPos();
+    // TODO: After compaction the size of a section can be more than INT_MAX bytes
+    // Might need to introduce a new type of chunk to write block on disk size as long instead of
+    // int
     int sizeOfCurSection = (int) (nextSectionStartOffset - sectionStartOffset);
     sectionIndexWriter.addEntry(sectionRowKeyPrefix, sectionStartOffset, sizeOfCurSection);
   }
@@ -127,6 +130,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   @Override
   public void close() throws IOException {
     closeSection();
+    assert this.lastCell == null;
 
     FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
 
@@ -138,24 +142,51 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));
 
     // Now finish off the trailer.
-
+    finishTrailer(trailer);
 
     finishClose();
   }
 
+  private long getSectionStartOffset() {
+    return sectionStartOffset;
+  }
+
+  private void updateStats(long maxMemstoreTs, long entryCount, long totalKeyLength,
+                           long totalValueLength, byte[] keyOfBiggestCell, long lenOfBiggestCell,
+                           int maxTagsLength, long firstDataBlockOffset, long lastDataBlockOffset,
+                           long totalUncompressedBytes) {
+    this.maxMemstoreTS = Math.max(this.maxMemstoreTS, maxMemstoreTs);
+    this.entryCount += entryCount;
+    this.totalKeyLength += totalKeyLength;
+    this.totalValueLength += totalValueLength;
+    if (this.lenOfBiggestCell < lenOfBiggestCell) {
+      this.lenOfBiggestCell = lenOfBiggestCell;
+      this.keyOfBiggestCell = keyOfBiggestCell;
+    }
+    this.maxTagsLength = Math.max(this.maxTagsLength, maxTagsLength);
+    if (this.firstDataBlockOffset == UNSET) {
+      this.firstDataBlockOffset = firstDataBlockOffset;
+    }
+    this.lastDataBlockOffset = lastDataBlockOffset;
+    this.totalUncompressedBytes += totalUncompressedBytes;
+  }
+
+  @InterfaceAudience.Private
   private static class VirtualHFileWriter extends HFileWriterImpl {
 
     private final long sectionStartOffset;
+    private final RowKeyPrefixIndexedHFileWriter physicalHFileWriter;
 
     public VirtualHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
                               FSDataOutputStream outputStream, HFileContext fileContext,
                               SingleStoreFileWriter singleStoreFileWriter,
                               BloomType bloomType, long maxKeysInBloomFilters,
-                              long sectionStartOffset)
+                              RowKeyPrefixIndexedHFileWriter physicalHFileWriter)
             throws IOException {
       super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter, bloomType,
               maxKeysInBloomFilters);
-      this.sectionStartOffset = sectionStartOffset;
+      this.physicalHFileWriter = physicalHFileWriter;
+      this.sectionStartOffset = physicalHFileWriter.getSectionStartOffset();
     }
 
     @Override
@@ -211,6 +242,9 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
       writeMetaBlockIndex();
 
+      physicalHFileWriter.updateStats(maxMemstoreTS, entryCount, totalKeyLength, totalValueLength,
+              keyOfBiggestCell, lenOfBiggestCell, maxTagsLength, firstDataBlockOffset,
+              lastDataBlockOffset, totalUncompressedBytes);
       // File info
       trailer.setFileInfoOffset(outputStream.getPos() - sectionStartOffset);
       writeFileInfo(blockWriter.startWriting(BlockType.FILE_INFO));

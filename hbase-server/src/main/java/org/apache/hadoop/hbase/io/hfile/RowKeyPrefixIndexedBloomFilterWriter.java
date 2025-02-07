@@ -2,7 +2,9 @@ package org.apache.hadoop.hbase.io.hfile;
 
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.yetus.audience.InterfaceAudience;
 
+@InterfaceAudience.Private
 public class RowKeyPrefixIndexedBloomFilterWriter extends CompoundBloomFilterWriter {
 
   private long sectionStartOffset = 0;
@@ -26,10 +28,5 @@ public class RowKeyPrefixIndexedBloomFilterWriter extends CompoundBloomFilterWri
   @Override
   public long getSectionStartOffset() {
     return sectionStartOffset;
-  }
-
-  @Override
-  public void blockWritten(long offset, int onDiskSize, int uncompressedSize) {
-    super.blockWritten(offset - sectionStartOffset, onDiskSize, uncompressedSize);
   }
 }

@@ -1,5 +1,8 @@
 package org.apache.hadoop.hbase.io.hfile;
 
+import org.apache.yetus.audience.InterfaceAudience;
+
+@InterfaceAudience.Private
 public class RowKeyPrefixIndexedBlockIndexWriter extends HFileBlockIndex.BlockIndexWriter {
 
   private long sectionStartOffset = 0;

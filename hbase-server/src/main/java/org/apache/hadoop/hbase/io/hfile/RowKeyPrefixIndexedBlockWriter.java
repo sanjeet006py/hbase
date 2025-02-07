@@ -2,7 +2,9 @@ package org.apache.hadoop.hbase.io.hfile;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.io.ByteBuffAllocator;
+import org.apache.yetus.audience.InterfaceAudience;
 
+@InterfaceAudience.Private
 public class RowKeyPrefixIndexedBlockWriter extends HFileBlock.Writer {
 
   private long sectionStartOffset = 0;

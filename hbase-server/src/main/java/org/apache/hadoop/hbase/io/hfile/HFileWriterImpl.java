@@ -148,7 +148,7 @@ public class HFileWriterImpl implements HFile.Writer {
 
   protected final HFileContext hFileContext;
 
-  private int maxTagsLength = 0;
+  protected int maxTagsLength = 0;
 
   /** KeyValue version in FileInfo */
   public static final byte[] KEY_VALUE_VERSION = Bytes.toBytes("KEY_VALUE_VERSION");

@@ -194,8 +194,8 @@ public class HFileWriterImpl implements HFile.Writer {
   protected BloomContext deleteFamilyBloomContext = null;
 
   public HFileWriterImpl(final Configuration conf, CacheConfig cacheConf, Path path,
-    FSDataOutputStream outputStream, HFileContext fileContext,
-    SingleStoreFileWriter singleStoreFileWriter, BloomType bloomType, long maxKeysInBloomFilters)
+    FSDataOutputStream outputStream, HFileContext fileContext, BloomType bloomType,
+    long maxKeysInBloomFilters)
     throws IOException {
     this.outputStream = outputStream;
     this.path = path;
@@ -217,7 +217,6 @@ public class HFileWriterImpl implements HFile.Writer {
     this.cacheConf = cacheConf;
     float encodeBlockSizeRatio = conf.getFloat(UNIFIED_ENCODED_BLOCKSIZE_RATIO, 0f);
     this.encodedBlockSizeLimit = (int) (hFileContext.getBlocksize() * encodeBlockSizeRatio);
-    this.singleStoreFileWriter = singleStoreFileWriter;
     this.maxKeysInBloomFilters = maxKeysInBloomFilters;
 
     finishInit(conf, bloomType);

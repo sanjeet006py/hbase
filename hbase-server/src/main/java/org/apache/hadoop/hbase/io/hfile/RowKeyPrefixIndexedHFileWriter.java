@@ -40,8 +40,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
                                         FSDataOutputStream outputStream, HFileContext fileContext,
                                         SingleStoreFileWriter singleStoreFileWriter,
                                         BloomType bloomType, long maxKeysInBloomFilters) throws IOException {
-    super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter, bloomType,
-            maxKeysInBloomFilters);
+    super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
     this.conf = conf;
     assert rowKeyPrefixLength != TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
@@ -67,8 +66,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     blockWriter = new HFileBlock.Writer(conf, blockEncoder, hFileContext,
             cacheConf.getByteBuffAllocator(), conf.getInt(MAX_BLOCK_SIZE_UNCOMPRESSED,
                     hFileContext.getBlocksize() * 10));
-    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext
-            , singleStoreFileWriter, bloomType, maxKeysInBloomFilters, this);
+    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream,
+            hFileContext, bloomType, maxKeysInBloomFilters, this);
     // Section index writer to store index of row key prefixes and section start offset + size
     sectionIndexWriter = new HFileBlockIndex.BlockIndexWriter(blockWriter,
             cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
@@ -78,8 +77,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
   private void newSection() throws IOException {
     sectionStartOffset = this.outputStream.getPos();
-    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream, hFileContext,
-            singleStoreFileWriter, bloomType, maxKeysInBloomFilters, this);
+    virtualHFileWriter = new VirtualHFileWriter(conf, cacheConf, null, outputStream,
+            hFileContext, bloomType, maxKeysInBloomFilters, this);
     sectionRowKeyPrefix = null;
   }
 
@@ -179,12 +178,10 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
     public VirtualHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
                               FSDataOutputStream outputStream, HFileContext fileContext,
-                              SingleStoreFileWriter singleStoreFileWriter,
                               BloomType bloomType, long maxKeysInBloomFilters,
                               RowKeyPrefixIndexedHFileWriter physicalHFileWriter)
             throws IOException {
-      super(conf, cacheConf, path, outputStream, fileContext, singleStoreFileWriter, bloomType,
-              maxKeysInBloomFilters);
+      super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters);
       this.physicalHFileWriter = physicalHFileWriter;
       this.sectionStartOffset = physicalHFileWriter.getSectionStartOffset();
     }

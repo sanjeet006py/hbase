@@ -75,6 +75,7 @@ import org.apache.hadoop.hbase.io.hfile.HFile.Reader;
 import org.apache.hadoop.hbase.io.hfile.HFile.Writer;
 import org.apache.hadoop.hbase.io.hfile.ReaderContext.ReaderType;
 import org.apache.hadoop.hbase.nio.ByteBuff;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
 import org.apache.hadoop.hbase.testclassification.IOTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
@@ -493,7 +494,8 @@ public class TestHFile {
         .withTableName(Bytes.toBytes(tableName)).withHBaseCheckSum(false)
         .withCompression(Compression.Algorithm.NONE).withCompressTags(false).build();
     HFileWriterImpl writer =
-      new HFileWriterImpl(conf, cacheConf, path, mockedOutputStream, fileContext);
+      new HFileWriterImpl(conf, cacheConf, path, mockedOutputStream, fileContext, BloomType.NONE,
+        10);
     CellBuilder cellBuilder = CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY);
     byte[] row = Bytes.toBytes("foo");
     byte[] qualifier = Bytes.toBytes("qualifier");

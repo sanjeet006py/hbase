@@ -303,6 +303,7 @@ public final class HFile {
       return this;
     }
 
+    // TODO: Remove after successful testing
     public WriterFactory withSingleStoreFileWriter(SingleStoreFileWriter singleStoreFileWriter) {
       this.singleStoreFileWriter = singleStoreFileWriter;
       return this;
@@ -335,8 +336,8 @@ public final class HFile {
 
     public Writer create() throws IOException {
       preCreate();
-      return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext,
-        singleStoreFileWriter, bloomType, maxKeysInBloomFilters);
+      return new HFileWriterImpl(conf, cacheConf, path, ostream, fileContext, bloomType,
+        maxKeysInBloomFilters);
     }
   }
 

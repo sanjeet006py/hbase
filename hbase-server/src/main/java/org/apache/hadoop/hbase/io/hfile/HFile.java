@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.io.FSDataInputStreamWrapper;
 import org.apache.hadoop.hbase.io.MetricsIO;
 import org.apache.hadoop.hbase.io.compress.Compression;
@@ -134,13 +135,16 @@ public final class HFile {
   public final static Compression.Algorithm DEFAULT_COMPRESSION_ALGORITHM =
     Compression.Algorithm.NONE;
 
+  public static final int ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION = 4;
+  public static final int PRE_ROW_KEY_PREFIX_INDEXED_FILE_FORMAT_VERSION = 3;
+
   /** Minimum supported HFile format version */
   public static final int MIN_FORMAT_VERSION = 2;
 
   /**
    * Maximum supported HFile format version
    */
-  public static final int MAX_FORMAT_VERSION = 4;
+  public static final int MAX_FORMAT_VERSION = ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION;
 
   /**
    * Minimum HFile format version with support for persisting cell tags
@@ -345,7 +349,16 @@ public final class HFile {
   public static final String FORMAT_VERSION_KEY = "hfile.format.version";
 
   public static int getFormatVersion(Configuration conf) {
+    return getFormatVersion(conf, null);
+  }
+
+  public static int getFormatVersion(Configuration conf, HFileContext fileContext) {
     int version = conf.getInt(FORMAT_VERSION_KEY, MAX_FORMAT_VERSION);
+    if (fileContext != null && fileContext.getPbePrefixLength() ==
+      TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT
+      && version == ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION) {
+      version = PRE_ROW_KEY_PREFIX_INDEXED_FILE_FORMAT_VERSION;
+    }
     checkFormatVersion(version);
     return version;
   }
@@ -358,11 +371,16 @@ public final class HFile {
     return HFile.getWriterFactory(conf, CacheConfig.DISABLED);
   }
 
+  public static final WriterFactory getWriterFactory(Configuration conf, CacheConfig cacheConf) {
+    return getWriterFactory(conf, cacheConf, null);
+  }
+
   /**
    * Returns the factory to be used to create {@link HFile} writers
    */
-  public static final WriterFactory getWriterFactory(Configuration conf, CacheConfig cacheConf) {
-    int version = getFormatVersion(conf);
+  public static final WriterFactory getWriterFactory(Configuration conf, CacheConfig cacheConf,
+    HFileContext fileContext) {
+    int version = getFormatVersion(conf, fileContext);
     switch (version) {
       case 2:
         throw new IllegalArgumentException("This should never happen. "

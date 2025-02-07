@@ -1012,7 +1012,7 @@ public class HFileWriterImpl implements HFile.Writer {
   }
 
   protected int getMajorVersion() {
-    return 4;
+    return 3;
   }
 
   protected int getMinorVersion() {

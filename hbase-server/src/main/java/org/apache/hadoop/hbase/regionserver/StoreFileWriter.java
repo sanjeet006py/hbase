@@ -519,7 +519,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       this.timeRangeTracker = TimeRangeTracker.create(TimeRangeTracker.Type.NON_SYNC);
       // TODO : Change all writers to be specifically created for compaction context
       writer =
-        HFile.getWriterFactory(conf, cacheConf).withPath(fs, path).withFavoredNodes(favoredNodes)
+        HFile.getWriterFactory(conf, cacheConf, fileContext).withPath(fs, path).withFavoredNodes(favoredNodes)
           .withFileContext(fileContext).withShouldDropCacheBehind(shouldDropCacheBehind)
           .withSingleStoreFileWriter(this).withBloomType(bloomType)
           .withMaxKeysInBloomFilters(maxKeys).create();

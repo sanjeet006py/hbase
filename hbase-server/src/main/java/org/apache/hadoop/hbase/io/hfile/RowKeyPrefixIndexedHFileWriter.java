@@ -170,6 +170,14 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     this.totalUncompressedBytes += totalUncompressedBytes;
   }
 
+  protected int getMajorVersion() {
+    return HFile.ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION;
+  }
+
+  protected int getMinorVersion() {
+    return 0;
+  }
+
   @InterfaceAudience.Private
   private static class VirtualHFileWriter extends HFileWriterImpl {
 

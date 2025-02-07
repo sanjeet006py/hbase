@@ -1069,7 +1069,7 @@ possible configurations would overwhelm and obscure the important.
   </property>
   <property>
       <name>hfile.format.version</name>
-      <value>3</value>
+      <value>4</value>
       <description>The HFile format version to use for new files.
       Version 3 adds support for tags in hfiles (See http://hbase.apache.org/book.html#hbase.tags).
       Also see the configuration 'hbase.replication.rpc.codec'.

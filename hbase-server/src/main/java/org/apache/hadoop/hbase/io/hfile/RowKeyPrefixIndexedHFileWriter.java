@@ -12,7 +12,6 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.hadoop.hbase.regionserver.StoreFileWriter.SingleStoreFileWriter;
 import static org.apache.hadoop.hbase.io.hfile.BlockCompressedSizePredicator.
         MAX_BLOCK_SIZE_UNCOMPRESSED;
 
@@ -34,16 +33,17 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
   private HFile.Writer virtualHFileWriter = null;
 
-  private final Configuration conf;
+  private Configuration conf;
 
   public RowKeyPrefixIndexedHFileWriter(Configuration conf, CacheConfig cacheConf, Path path,
                                         FSDataOutputStream outputStream, HFileContext fileContext,
-                                        SingleStoreFileWriter singleStoreFileWriter,
                                         BloomType bloomType, long maxKeysInBloomFilters) throws IOException {
-    super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters);
+    super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters, true);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
-    this.conf = conf;
+    finishInit(conf, bloomType);
     assert rowKeyPrefixLength != TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
+    assert virtualHFileWriter != null;
+    LOG.info("Initialization of HFileWriter V4 is successful");
   }
 
   public static class WriterFactory extends HFile.WriterFactory {
@@ -56,7 +56,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       throws IOException {
       preCreate();
       return new RowKeyPrefixIndexedHFileWriter(conf, cacheConf, path, ostream, fileContext,
-              singleStoreFileWriter, bloomType, maxKeysInBloomFilters);
+              bloomType, maxKeysInBloomFilters);
     }
   }
 
@@ -73,6 +73,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
             cacheIndexesOnWrite ? cacheConf : null, cacheIndexesOnWrite ? name : null, indexBlockEncoder);
     // To reuse finishTrailer in super class
     dataBlockIndexWriter = sectionIndexWriter;
+    this.conf = conf;
+    this.bloomType = bloomType;
   }
 
   private void newSection() throws IOException {
@@ -189,9 +191,10 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
                               BloomType bloomType, long maxKeysInBloomFilters,
                               RowKeyPrefixIndexedHFileWriter physicalHFileWriter)
             throws IOException {
-      super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters);
+      super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters, true);
       this.physicalHFileWriter = physicalHFileWriter;
       this.sectionStartOffset = physicalHFileWriter.getSectionStartOffset();
+      finishInit(conf, bloomType);
     }
 
     @Override

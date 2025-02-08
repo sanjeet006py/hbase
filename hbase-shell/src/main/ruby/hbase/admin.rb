@@ -1538,6 +1538,7 @@ module Hbase
       htd.setRegionMemstoreReplication(JBoolean.valueOf(arg.delete(org.apache.hadoop.hbase.HTableDescriptor::REGION_MEMSTORE_REPLICATION))) if arg.include?(org.apache.hadoop.hbase.HTableDescriptor::REGION_MEMSTORE_REPLICATION)
       htd.setRegionSplitPolicyClassName(arg.delete(org.apache.hadoop.hbase.HTableDescriptor::SPLIT_POLICY)) if arg.include?(org.apache.hadoop.hbase.HTableDescriptor::SPLIT_POLICY)
       htd.setRegionReplication(JInteger.valueOf(arg.delete(org.apache.hadoop.hbase.HTableDescriptor::REGION_REPLICATION))) if arg.include?(org.apache.hadoop.hbase.HTableDescriptor::REGION_REPLICATION)
+      htd.setPbePrefixLength(JInteger.valueOf(arg.delete(org.apache.hadoop.hbase.client.TableDescriptorBuilder::PBE_PREFIX_LENGTH))) if arg.include?(org.apache.hadoop.hbase.client.TableDescriptorBuilder::PBE_PREFIX_LENGTH)
       set_user_metadata(htd, arg.delete(METADATA)) if arg[METADATA]
       set_descriptor_config(htd, arg.delete(CONFIGURATION)) if arg[CONFIGURATION]
     end

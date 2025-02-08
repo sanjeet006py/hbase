@@ -1652,6 +1652,20 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
     return getConnection().getTable(td.getTableName());
   }
 
+  public Table createTableForHFileV4(TableName name, byte[][] families, int pbePrefixLength)
+    throws IOException {
+    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(name);
+    builder.setPbePrefixLength(pbePrefixLength);
+    for (byte[] family : families) {
+      ColumnFamilyDescriptorBuilder cfdb = ColumnFamilyDescriptorBuilder.newBuilder(family);
+      builder.setColumnFamily(cfdb.build());
+    }
+    TableDescriptor td = builder.build();
+    getAdmin().createTable(td);
+    waitUntilAllRegionsAssigned(td.getTableName());
+    return getConnection().getTable(td.getTableName());
+  }
+
   /**
    * Create a table.
    * @param htd       table descriptor

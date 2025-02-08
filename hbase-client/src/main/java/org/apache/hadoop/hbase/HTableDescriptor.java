@@ -262,6 +262,11 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
     return this;
   }
 
+  public HTableDescriptor setPbePrefixLength(final int pbePrefixLength) {
+    getDelegateeForModification().setPbePrefixLength(pbePrefixLength);
+    return this;
+  }
+
   /**
    * Sets the HDFS erasure coding policy for the table. This will be propagated to HDFS for the data
    * dir of the table. Erasure coding is an alternative to normal replication which takes less space

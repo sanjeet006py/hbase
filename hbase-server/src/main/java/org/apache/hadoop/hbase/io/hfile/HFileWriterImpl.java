@@ -195,7 +195,13 @@ public class HFileWriterImpl implements HFile.Writer {
 
   public HFileWriterImpl(final Configuration conf, CacheConfig cacheConf, Path path,
     FSDataOutputStream outputStream, HFileContext fileContext, BloomType bloomType,
-    long maxKeysInBloomFilters)
+    long maxKeysInBloomFilters) throws IOException {
+    this(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters, false);
+  }
+
+  protected HFileWriterImpl(final Configuration conf, CacheConfig cacheConf, Path path,
+    FSDataOutputStream outputStream, HFileContext fileContext, BloomType bloomType,
+    long maxKeysInBloomFilters, boolean skipFinishInit)
     throws IOException {
     this.outputStream = outputStream;
     this.path = path;
@@ -219,7 +225,9 @@ public class HFileWriterImpl implements HFile.Writer {
     this.encodedBlockSizeLimit = (int) (hFileContext.getBlocksize() * encodeBlockSizeRatio);
     this.maxKeysInBloomFilters = maxKeysInBloomFilters;
 
-    finishInit(conf, bloomType);
+    if (! skipFinishInit) {
+      finishInit(conf, bloomType);
+    }
     if (LOG.isTraceEnabled()) {
       LOG.trace("Writer" + (path != null ? " for " + path : "") + " initialized with cacheConf: "
         + cacheConf + " fileContext: " + fileContext);

@@ -43,7 +43,7 @@ public class RowKeyPrefixIndexedBlockIndexWriter extends HFileBlockIndex.BlockIn
     public void add(byte[] firstKey, long blockOffset, int onDiskDataSize,
       long curTotalNumSubEntries) {
       super.add(firstKey, blockOffset - indexWriter.getSectionStartOffset(),
-        onDiskDataSize);
+        onDiskDataSize, curTotalNumSubEntries);
     }
   }
 }

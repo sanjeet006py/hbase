@@ -233,6 +233,7 @@ public class TableDescriptorBuilder {
   public static final boolean DEFAULT_REGION_MEMSTORE_REPLICATION = true;
 
   public static final String PBE_PREFIX_LENGTH = "PBE_PREFIX_LENGTH";
+  public static final Bytes PBE_PREFIX_LENGTH_KEY = new Bytes(Bytes.toBytes(PBE_PREFIX_LENGTH));
   public static final int PBE_PREFIX_LENGTH_DEFAULT = 0;
 
   private final static Map<String, String> DEFAULT_VALUES = new HashMap<>();
@@ -562,6 +563,11 @@ public class TableDescriptorBuilder {
 
   public TableDescriptorBuilder setRegionSplitPolicyClassName(String clazz) {
     desc.setRegionSplitPolicyClassName(clazz);
+    return this;
+  }
+
+  public TableDescriptorBuilder setPbePrefixLength(int pbePrefixLength) {
+    desc.setPbePrefixLength(pbePrefixLength);
     return this;
   }
 
@@ -1092,6 +1098,10 @@ public class TableDescriptorBuilder {
     @Override
     public String getFlushPolicyClassName() {
       return getOrDefault(FLUSH_POLICY_KEY, Function.identity(), null);
+    }
+
+    public ModifyableTableDescriptor setPbePrefixLength(int pbePrefixLength) {
+      return setValue(PBE_PREFIX_LENGTH_KEY, Integer.toString(pbePrefixLength));
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.apache.hadoop.hbase.io.hfile;
 
 import org.apache.hadoop.hbase.DroppedSnapshotException;
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -9,13 +10,17 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.crypto.KeyProviderForTesting;
+import org.apache.hadoop.hbase.testclassification.IOTests;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +28,12 @@ import java.io.IOException;
 
 import static org.apache.hadoop.hbase.regionserver.HRegion.MEMSTORE_PERIODIC_FLUSH_INTERVAL;
 
+@Category({ IOTests.class, SmallTests.class })
 public class TestHFileWriterV4WithEncryption {
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+    HBaseClassTestRule.forClass(TestHFileWriterV4WithEncryption.class);
+
   @Rule
   public TestName testName = new TestName();
 
@@ -50,9 +60,9 @@ public class TestHFileWriterV4WithEncryption {
 
   @Before
   public void before() throws IOException {
-    LOG.info("before");
+    LOG.info("Before test execution");
     UTIL.ensureSomeRegionServersAvailable(1);
-    LOG.info("before done");
+    LOG.info("Before test execution done");
   }
 
   @Test

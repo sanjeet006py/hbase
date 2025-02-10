@@ -26,13 +26,11 @@ import java.io.IOException;
 
 import static org.apache.hadoop.hbase.regionserver.HRegion.MEMSTORE_PERIODIC_FLUSH_INTERVAL;
 
-// TODO: Figure out why classes from hbase-annotations module are not getting picked up in
-//  classpath by IntelliJ IDEA
-//@Category({ IOTests.class, SmallTests.class })
+@Category({ IOTests.class, SmallTests.class })
 public class TestHFileV4 {
-//  @ClassRule
-//  public static final HBaseClassTestRule CLASS_RULE =
-//    HBaseClassTestRule.forClass(TestHFileV4.class);
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+    HBaseClassTestRule.forClass(TestHFileV4.class);
 
   @Rule
   public TestName testName = new TestName();
@@ -59,13 +57,13 @@ public class TestHFileV4 {
 
   @Before
   public void before() throws IOException {
-    LOG.info("before");
+    LOG.info("Before test execution");
     UTIL.ensureSomeRegionServersAvailable(1);
-    LOG.info("before done");
+    LOG.info("Before test execution done");
   }
 
   @Test
-  public void testFlushWithHFileV4() throws IOException {
+  public void testFlushWithHFileV4() throws Exception {
     LOG.info("testFlushWithHFileV4");
     String tableName = "testpbe";
     Table table = UTIL.createTableForHFileV4(TableName.valueOf(tableName), families, 4);
@@ -89,11 +87,15 @@ public class TestHFileV4 {
         throw ex;
       }
     }
-    table.close();
+    finally {
+      table.close();
+      UTIL.shutdownMiniCluster();
+      UTIL.startMiniCluster();
+    }
   }
 
   @Test
-  public void testRowKeyLengthLessThanPbePrefixLength() throws IOException {
+  public void testRowKeyLengthLessThanPbePrefixLength() throws Exception {
     LOG.info("testRowKeyLengthLessThanPbePrefixLength");
     String tableName = "testpbe1";
     Table table = UTIL.createTableForHFileV4(TableName.valueOf(tableName), families, 4);
@@ -115,6 +117,10 @@ public class TestHFileV4 {
         throw ex;
       }
     }
-    table.close();
+    finally {
+      table.close();
+      UTIL.shutdownMiniCluster();
+      UTIL.startMiniCluster();
+    }
  }
 }

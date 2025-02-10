@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import static org.apache.hadoop.hbase.io.hfile.BlockCompressedSizePredicator.
         MAX_BLOCK_SIZE_UNCOMPRESSED;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 @InterfaceAudience.Private
@@ -91,13 +93,12 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     if (sectionRowKeyPrefix == null) {
       return false;
     }
-    return ! Bytes.equals(sectionRowKeyPrefix, 0, rowKeyPrefixLength,
-            CellUtil.copyRow(cell), 0, rowKeyPrefixLength);
+    return ! CellUtil.compareRowKeyPrefix(cell, sectionRowKeyPrefix, rowKeyPrefixLength);
   }
 
 
   private void checkCell(Cell cell) throws IOException {
-    int rowKeyPrefixLengthOfCurCell = CellUtil.copyRow(cell).length;
+    int rowKeyPrefixLengthOfCurCell = cell.getRowLength();
     if (rowKeyPrefixLengthOfCurCell < rowKeyPrefixLength) {
       throw new IOException("Row key length of cell is: " + rowKeyPrefixLengthOfCurCell
               + " instead of expected: " + rowKeyPrefixLength);
@@ -179,6 +180,9 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     this.totalValueLength += totalValueLength;
     if (this.lenOfBiggestCell < lenOfBiggestCell) {
       this.lenOfBiggestCell = lenOfBiggestCell;
+      // Key of biggest cell in this HFileInfo will be encrypted by STK so, if STK gets compromised
+      // then row key of biggest cell will also be compromised.
+      // TODO: During Reader implementation see if we can skip storing key of biggest cell.
       this.keyOfBiggestCell = keyOfBiggestCell;
     }
     this.maxTagsLength = Math.max(this.maxTagsLength, maxTagsLength);
@@ -255,7 +259,19 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       // Then write bloom filter indexes followed by HFile trailer.
 
       finishDataBlockAndInlineBlocks();
-      FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
+      FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion()) {
+        void serialize(DataOutputStream outputStream) throws IOException {
+          HFile.checkFormatVersion(majorVersion);
+
+          ByteArrayOutputStream baos = new ByteArrayOutputStream();
+          DataOutputStream baosDos = new DataOutputStream(baos);
+
+          BlockType.TRAILER.write(baosDos);
+          serializeAsPB(baosDos);
+
+          baos.writeTo(outputStream);
+        }
+      };
       writeMetadataBlocks();
 
       // Load-on-open section.
@@ -282,9 +298,6 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       writeBloomIndexes();
 
       // Now finish off the trailer.
-      // TODO: Override finishTrailer() to not serialize HFile format version for virtual HFile
-      //  writer. We don't need to serialize the HFile format version in this case so why waste
-      //  extra 4 bytes.
       finishTrailer(trailer);
       // Change absolute offsets to relative offsets
       trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);

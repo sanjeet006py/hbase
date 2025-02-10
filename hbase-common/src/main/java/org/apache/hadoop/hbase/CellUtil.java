@@ -1692,4 +1692,14 @@ public final class CellUtil {
   public static Cell cloneIfNecessary(Cell cell) {
     return (cell instanceof ByteBufferExtendedCell ? KeyValueUtil.copyToNewKeyValue(cell) : cell);
   }
+
+  public static boolean compareRowKeyPrefix(Cell cell, byte[] rowKeyPrefix, int rowKeyPrefixLength) {
+    if (cell instanceof ByteBufferExtendedCell) {
+      return ByteBufferUtils.equals(((ByteBufferExtendedCell) cell).getRowByteBuffer(),
+        ((ByteBufferExtendedCell) cell).getRowPosition(), rowKeyPrefixLength, rowKeyPrefix,
+        0, rowKeyPrefixLength);
+    }
+    return Bytes.equals(cell.getRowArray(), cell.getRowOffset(), rowKeyPrefixLength, rowKeyPrefix,
+      0, rowKeyPrefixLength);
+  }
 }

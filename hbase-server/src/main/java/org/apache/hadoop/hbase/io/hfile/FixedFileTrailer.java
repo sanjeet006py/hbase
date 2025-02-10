@@ -133,12 +133,12 @@ public class FixedFileTrailer {
   /**
    * The {@link HFile} format major version.
    */
-  private final int majorVersion;
+  protected final int majorVersion;
 
   /**
    * The {@link HFile} format minor version.
    */
-  private final int minorVersion;
+  protected final int minorVersion;
 
   FixedFileTrailer(int majorVersion, int minorVersion) {
     this.majorVersion = majorVersion;

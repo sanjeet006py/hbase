@@ -282,6 +282,9 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       writeBloomIndexes();
 
       // Now finish off the trailer.
+      // TODO: Override finishTrailer() to not serialize HFile format version for virtual HFile
+      //  writer. We don't need to serialize the HFile format version in this case so why waste
+      //  extra 4 bytes.
       finishTrailer(trailer);
       // Change absolute offsets to relative offsets
       trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);

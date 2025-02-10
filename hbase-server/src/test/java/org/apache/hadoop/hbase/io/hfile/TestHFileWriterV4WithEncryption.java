@@ -1,54 +1,45 @@
 package org.apache.hadoop.hbase.io.hfile;
 
 import org.apache.hadoop.hbase.DroppedSnapshotException;
-import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.testclassification.IOTests;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.io.crypto.KeyProviderForTesting;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 
 import static org.apache.hadoop.hbase.regionserver.HRegion.MEMSTORE_PERIODIC_FLUSH_INTERVAL;
 
-// TODO: Figure out why classes from hbase-annotations module are not getting picked up in
-//  classpath by IntelliJ IDEA
-//@Category({ IOTests.class, SmallTests.class })
-public class TestHFileV4 {
-//  @ClassRule
-//  public static final HBaseClassTestRule CLASS_RULE =
-//    HBaseClassTestRule.forClass(TestHFileV4.class);
-
+public class TestHFileWriterV4WithEncryption {
   @Rule
   public TestName testName = new TestName();
 
   private final static HBaseTestingUtility UTIL = new HBaseTestingUtility();
 
-  private static final Logger LOG = LoggerFactory.getLogger(TestHFileV4.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestHFileWriterV4WithEncryption.class);
 
-  static final byte[] FAMILY = Bytes.toBytes("cf");
-
-  private static final byte[][] families = new byte[][] { FAMILY };
+  static final String FAMILY = "cf";
 
   @BeforeClass
   public static void beforeClass() throws Exception {
     UTIL.getConfiguration().setInt("hfile.format.version", 4);
     UTIL.getConfiguration().setInt(MEMSTORE_PERIODIC_FLUSH_INTERVAL, 0);
+    UTIL.getConfiguration().set(HConstants.CRYPTO_KEYPROVIDER_CONF_KEY,
+      KeyProviderForTesting.class.getName());
+    UTIL.getConfiguration().set(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY, "hbase");
     UTIL.startMiniCluster();
   }
 
@@ -68,12 +59,20 @@ public class TestHFileV4 {
   public void testFlushWithHFileV4() throws IOException {
     LOG.info("testFlushWithHFileV4");
     String tableName = "testpbe";
-    Table table = UTIL.createTableForHFileV4(TableName.valueOf(tableName), families, 4);
+    HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
+    HColumnDescriptor hcd = new HColumnDescriptor(FAMILY);
+    String algorithm = UTIL.getConfiguration().get(
+      HConstants.CRYPTO_KEY_ALGORITHM_CONF_KEY, HConstants.CIPHER_AES);
+    hcd.setEncryptionType(algorithm);
+    htd.addFamily(hcd);
+    htd.setPbePrefixLength(4);
+    UTIL.getAdmin().createTable(htd);
+    Table table = UTIL.getConnection().getTable(htd.getTableName());
     Put put = new Put("row1".getBytes());
-    put.addColumn(FAMILY, "c1".getBytes(), "value1".getBytes());
+    put.addColumn(Bytes.toBytes(FAMILY), "c1".getBytes(), "value1".getBytes());
     table.put(put);
     put = new Put("row2".getBytes());
-    put.addColumn(FAMILY, "c1".getBytes(), "value2".getBytes());
+    put.addColumn(Bytes.toBytes(FAMILY), "c1".getBytes(), "value2".getBytes());
     table.put(put);
     LOG.info("Added a new row, going for flush");
     // Flush is expected to fail as after flush, file is read to validate and reader hasn't been
@@ -91,30 +90,4 @@ public class TestHFileV4 {
     }
     table.close();
   }
-
-  @Test
-  public void testRowKeyLengthLessThanPbePrefixLength() throws IOException {
-    LOG.info("testRowKeyLengthLessThanPbePrefixLength");
-    String tableName = "testpbe1";
-    Table table = UTIL.createTableForHFileV4(TableName.valueOf(tableName), families, 4);
-    Put put = new Put("row".getBytes());
-    put.addColumn(FAMILY, "c1".getBytes(), "value1".getBytes());
-    table.put(put);
-    LOG.info("Added a new row, going for flush");
-    try {
-      UTIL.flush(TableName.valueOf(tableName));
-      Assert.fail();
-    }
-    catch (DroppedSnapshotException ex) {
-      Exception innerEx = (Exception) ex.getCause();
-      if (innerEx instanceof IOException) {
-        Assert.assertEquals("Row key length of cell is: 3 instead of expected: 4",
-          innerEx.getMessage());
-      }
-      else {
-        throw ex;
-      }
-    }
-    table.close();
- }
 }

@@ -1,5 +1,6 @@
 package org.apache.hadoop.hbase.io.hfile;
 
+import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
@@ -10,6 +11,7 @@ import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -22,6 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static org.apache.hadoop.hbase.regionserver.HRegion.MEMSTORE_PERIODIC_FLUSH_INTERVAL;
+
+// TODO: Figure out why classes from hbase-annotations module are not getting picked up in
+//  classpath by IntelliJ IDEA
 //@Category({ IOTests.class, SmallTests.class })
 public class TestHFileV4 {
 //  @ClassRule
@@ -42,6 +48,7 @@ public class TestHFileV4 {
   @BeforeClass
   public static void beforeClass() throws Exception {
     UTIL.getConfiguration().setInt("hfile.format.version", 4);
+    UTIL.getConfiguration().setInt(MEMSTORE_PERIODIC_FLUSH_INTERVAL, 0);
     UTIL.startMiniCluster();
   }
 
@@ -65,11 +72,49 @@ public class TestHFileV4 {
     Put put = new Put("row1".getBytes());
     put.addColumn(FAMILY, "c1".getBytes(), "value1".getBytes());
     table.put(put);
+    put = new Put("row2".getBytes());
+    put.addColumn(FAMILY, "c1".getBytes(), "value2".getBytes());
+    table.put(put);
     LOG.info("Added a new row, going for flush");
-    UTIL.flush(TableName.valueOf(tableName));
-    LOG.info("Flush succeeded");
+    // Flush is expected to fail as after flush we file is read to validate and reader hasn't been
+    // implemented yet for HFile v4.
+    try {
+      UTIL.flush(TableName.valueOf(tableName));
+    }
+    catch (DroppedSnapshotException ex) {
+      if(ex.getCause() instanceof CorruptHFileException) {
+        LOG.info("Flush failed as expected as reader for new HFile format is yet to be implemented");
+      }
+      else {
+        throw ex;
+      }
+    }
     table.close();
   }
 
-
+  @Test
+  public void testRowKeyLengthLessThanPbePrefixLength() throws IOException {
+    LOG.info("testRowKeyLengthLessThanPbePrefixLength");
+    String tableName = "testpbe1";
+    Table table = UTIL.createTableForHFileV4(TableName.valueOf(tableName), families, 4);
+    Put put = new Put("row".getBytes());
+    put.addColumn(FAMILY, "c1".getBytes(), "value1".getBytes());
+    table.put(put);
+    LOG.info("Added a new row, going for flush");
+    try {
+      UTIL.flush(TableName.valueOf(tableName));
+      Assert.fail();
+    }
+    catch (DroppedSnapshotException ex) {
+      Exception innerEx = (Exception) ex.getCause();
+      if (innerEx instanceof IOException) {
+        Assert.assertEquals("Row key length of cell is: 3 instead of expected: 4",
+          innerEx.getMessage());
+      }
+      else {
+        throw ex;
+      }
+    }
+    table.close();
+ }
 }

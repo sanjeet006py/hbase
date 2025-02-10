@@ -33,6 +33,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hbase.io.hfile.HFile.ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION;
+
 /**
  * Handles Bloom filter initialization based on configuration and serialized metadata in the reader
  * and writer of {@link org.apache.hadoop.hbase.regionserver.HStoreFile}.
@@ -170,7 +172,7 @@ public final class BloomFilterFactory {
     // Do we support compound bloom filters?
     // In case of compound Bloom filters we ignore the maxKeys hint.
     CompoundBloomFilterWriter bloomWriter;
-    if (version == 4) {
+    if (version == ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION) {
       bloomWriter = new RowKeyPrefixIndexedBloomFilterWriter(getBloomBlockSize(conf), err,
         Hash.getHashType(conf), maxFold, cacheConf.shouldCacheBloomsOnWrite(),
         bloomType == BloomType.ROWCOL ? CellComparatorImpl.COMPARATOR : null, bloomType);
@@ -207,7 +209,7 @@ public final class BloomFilterFactory {
     int version = HFile.getFormatVersion(conf, writer.getFileContext());
     // In case of compound Bloom filters we ignore the maxKeys hint.
     CompoundBloomFilterWriter bloomWriter;
-    if (version == 4) {
+    if (version == ROW_KEY_PREFIX_INDEXED_HFILE_FORMAT_VERSION) {
       bloomWriter = new RowKeyPrefixIndexedBloomFilterWriter(getBloomBlockSize(conf), err,
         Hash.getHashType(conf), maxFold, cacheConf.shouldCacheBloomsOnWrite(), null, BloomType.ROW);
     }

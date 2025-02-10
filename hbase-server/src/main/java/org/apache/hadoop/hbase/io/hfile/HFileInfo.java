@@ -537,4 +537,12 @@ public class HFileInfo implements SortedMap<byte[], byte[]> {
   public boolean isDecodeMemstoreTS() {
     return decodeMemstoreTS;
   }
+
+  public String toString() {
+    TreeMap<String, String> tempMap = new TreeMap<>();
+    for (Map.Entry<byte[], byte[]> entry: map.entrySet()) {
+      tempMap.put(Bytes.toString(entry.getKey()), Bytes.toString(entry.getValue()));
+    }
+    return tempMap.toString();
+  }
 }

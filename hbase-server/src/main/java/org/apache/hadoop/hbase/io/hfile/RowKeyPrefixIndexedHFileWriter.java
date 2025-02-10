@@ -43,7 +43,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     finishInit(conf, bloomType);
     assert rowKeyPrefixLength != TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
     assert virtualHFileWriter != null;
-    LOG.info("Initialization of HFileWriter V4 is successful");
+    LOG.info(String.format("Initialization of HFileWriter V4 is successful, path: %s",
+      path.toString()));
   }
 
   public static class WriterFactory extends HFile.WriterFactory {
@@ -75,6 +76,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     dataBlockIndexWriter = sectionIndexWriter;
     this.conf = conf;
     this.bloomType = bloomType;
+    LOG.info("Block writer, virtual HFile writer and section index writer have been successfully "
+      + "initialized");
   }
 
   private void newSection() throws IOException {
@@ -88,7 +91,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
     if (sectionRowKeyPrefix == null) {
       return false;
     }
-    return Bytes.equals(sectionRowKeyPrefix, 0, rowKeyPrefixLength,
+    return ! Bytes.equals(sectionRowKeyPrefix, 0, rowKeyPrefixLength,
             CellUtil.copyRow(cell), 0, rowKeyPrefixLength);
   }
 
@@ -109,6 +112,7 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       newSection();
     }
     virtualHFileWriter.append(cell);
+    LOG.info("Appended cell: " + cell);
     if (sectionRowKeyPrefix == null) {
       sectionRowKeyPrefix = new byte[rowKeyPrefixLength];
       System.arraycopy(CellUtil.copyRow(cell), 0, sectionRowKeyPrefix, 0,
@@ -117,19 +121,31 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   }
 
   private void closeSection() throws IOException {
+    LOG.info(String.format("Closing section with section row key prefix: %s, "
+      + "section start offset: %d", Bytes.toString(sectionRowKeyPrefix), sectionStartOffset));
     virtualHFileWriter.close();
+
+    if (sectionRowKeyPrefix == null) {
+      LOG.info(String.format("Doing pre-mature close section for section with offset: %d, "
+        + "section row key prefix: %s", sectionStartOffset, sectionRowKeyPrefix));
+      return;
+    }
 
     // Now add entry in section index
     long nextSectionStartOffset = this.outputStream.getPos();
     // TODO: After compaction the size of a section can be more than INT_MAX bytes
-    // Might need to introduce a new type of chunk to write block on disk size as long instead of
-    // int
+    //  Might need to introduce a new type of chunk to write block on disk size as long instead of
+    //  int
     int sizeOfCurSection = (int) (nextSectionStartOffset - sectionStartOffset);
     sectionIndexWriter.addEntry(sectionRowKeyPrefix, sectionStartOffset, sizeOfCurSection);
+    LOG.info(String.format("Added entry in section index for row key prefix: %s, "
+      + "section start offset: %d, section byte size: %d", Bytes.toString(sectionRowKeyPrefix),
+      sectionStartOffset, sizeOfCurSection));
   }
 
   @Override
   public void close() throws IOException {
+    LOG.info(String.format("Closing HFile output stream, path: %s", path.toString()));
     closeSection();
     assert this.lastCell == null;
 
@@ -144,7 +160,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
 
     // Now finish off the trailer.
     finishTrailer(trailer);
-
+    LOG.info(String.format("Closed HFile writer with path: %s, HFile Info: %s, File Trailer: %s",
+      path, fileInfo, trailer));
     finishClose();
   }
 
@@ -183,6 +200,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   @InterfaceAudience.Private
   private static class VirtualHFileWriter extends HFileWriterImpl {
 
+    private static final Logger INNER_LOG = LoggerFactory.getLogger(VirtualHFileWriter.class);
+
     private final long sectionStartOffset;
     private final RowKeyPrefixIndexedHFileWriter physicalHFileWriter;
 
@@ -195,6 +214,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       this.physicalHFileWriter = physicalHFileWriter;
       this.sectionStartOffset = physicalHFileWriter.getSectionStartOffset();
       finishInit(conf, bloomType);
+      INNER_LOG.info(String.format("Initialized virtual HFile writer with section start offset: %d",
+        sectionStartOffset));
     }
 
     @Override
@@ -220,7 +241,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       // Meta data block index writer
       metaBlockIndexWriter = new RowKeyPrefixIndexedBlockIndexWriter();
       initBloomFilterWriters(conf, bloomType);
-      LOG.trace("Initialized with {}", cacheConf);
+      INNER_LOG.trace("Initialized with {}", cacheConf);
+      INNER_LOG.info("Initialized block writer, data block index writer, bloom filter writers");
     }
 
     @Override
@@ -264,6 +286,8 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
       // Change absolute offsets to relative offsets
       trailer.setFirstDataBlockOffset(trailer.getFirstDataBlockOffset() - sectionStartOffset);
       trailer.setLastDataBlockOffset(trailer.getLastDataBlockOffset() - sectionStartOffset);
+      INNER_LOG.info(String.format("Closing virtual HFile writer with section start offset: %d, "
+        + "HFile Info: %s, File Trailer: %s", sectionStartOffset, fileInfo, trailer));
       finishClose();
 
       // Log final Bloom filter statistics. This needs to be done after close()
@@ -273,6 +297,14 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
                 (hasGeneralBloom ? "" : "NO ") + "General Bloom and " + (hasDeleteFamilyBloom ? "" : "NO ")
                         + "DeleteFamily" + " was added to HFile " + getPath());
       }
+    }
+
+    protected int getMajorVersion() {
+      return physicalHFileWriter.getMajorVersion();
+    }
+
+    protected int getMinorVersion() {
+      return physicalHFileWriter.getMinorVersion();
     }
   }
 }

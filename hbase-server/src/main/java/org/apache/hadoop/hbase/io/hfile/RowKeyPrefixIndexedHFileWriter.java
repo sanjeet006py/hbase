@@ -23,11 +23,9 @@ import java.io.IOException;
 public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
   private static final Logger LOG = LoggerFactory.getLogger(RowKeyPrefixIndexedHFileWriter.class);
 
-  private static final long SECTION_START_OFFSET_ON_WRITER_INIT = 0;
-
   private final int rowKeyPrefixLength;
 
-  private long sectionStartOffset = SECTION_START_OFFSET_ON_WRITER_INIT;
+  private long sectionStartOffset;
 
   private HFileBlockIndex.BlockIndexWriter sectionIndexWriter;
 
@@ -42,11 +40,12 @@ public class RowKeyPrefixIndexedHFileWriter extends HFileWriterImpl {
                                         BloomType bloomType, long maxKeysInBloomFilters) throws IOException {
     super(conf, cacheConf, path, outputStream, fileContext, bloomType, maxKeysInBloomFilters, true);
     this.rowKeyPrefixLength = fileContext.getPbePrefixLength();
+    sectionStartOffset = this.outputStream.getPos();
     finishInit(conf, bloomType);
     assert rowKeyPrefixLength != TableDescriptorBuilder.PBE_PREFIX_LENGTH_DEFAULT;
     assert virtualHFileWriter != null;
-    LOG.info(String.format("Initialization of HFileWriter V4 is successful, path: %s",
-      path.toString()));
+    LOG.info(String.format("Initialization of HFileWriter V4 is successful, path: %s, start offset: %d",
+      path.toString(), sectionStartOffset));
   }
 
   public static class WriterFactory extends HFile.WriterFactory {

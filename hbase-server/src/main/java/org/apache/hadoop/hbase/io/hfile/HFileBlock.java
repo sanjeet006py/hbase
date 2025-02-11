@@ -222,7 +222,7 @@ public class HFileBlock implements Cacheable {
    */
   static final int CHECKSUM_VERIFICATION_NUM_IO_THRESHOLD = 3;
 
-  private static int UNSET = -1;
+  protected static int UNSET = -1;
   public static final boolean FILL_HEADER = true;
   public static final boolean DONT_FILL_HEADER = false;
 
@@ -775,7 +775,7 @@ public class HFileBlock implements Cacheable {
      * Current block type. Set in {@link #startWriting(BlockType)}. Could be changed in
      * {@link #finishBlock()} from {@link BlockType#DATA} to {@link BlockType#ENCODED_DATA}.
      */
-    private BlockType blockType;
+    protected BlockType blockType;
 
     /**
      * A stream that we write uncompressed bytes to, which compresses them and writes them to
@@ -809,9 +809,9 @@ public class HFileBlock implements Cacheable {
     private long[] prevOffsetByType;
 
     /** The offset of the previous block of the same type */
-    private long prevOffset;
+    protected long prevOffset;
     /** Meta data that holds information about the hfileblock **/
-    private HFileContext fileContext;
+    protected HFileContext fileContext;
 
     private final ByteBuffAllocator allocator;
 
@@ -990,7 +990,7 @@ public class HFileBlock implements Cacheable {
      * @param onDiskDataSize   size of the block on disk with header and data but not including the
      *                         checksums
      */
-    private void putHeader(byte[] dest, int offset, int onDiskSize, int uncompressedSize,
+    protected void putHeader(byte[] dest, int offset, int onDiskSize, int uncompressedSize,
       int onDiskDataSize) {
       offset = blockType.put(dest, offset);
       offset = Bytes.putInt(dest, offset, onDiskSize - HConstants.HFILEBLOCK_HEADER_SIZE);
@@ -1001,7 +1001,7 @@ public class HFileBlock implements Cacheable {
       Bytes.putInt(dest, offset, onDiskDataSize);
     }
 
-    private void putHeader(ByteBuff buff, int onDiskSize, int uncompressedSize,
+    protected void putHeader(ByteBuff buff, int onDiskSize, int uncompressedSize,
       int onDiskDataSize) {
       buff.rewind();
       blockType.write(buff);

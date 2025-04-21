@@ -48,6 +48,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final String sizeOfHFileRefsQueueKey;
   private final String oldestWalAgeKey;
   private final String sourceInitializingKey;
+  private final String lastMarkerTSKey;
 
   private final MutableHistogram ageOfLastShippedOpHist;
   private final MutableGaugeLong sizeOfLogQueueGauge;
@@ -78,6 +79,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final MutableFastCounter completedRecoveryQueue;
   private final MutableGaugeLong oldestWalAge;
   private final MutableGaugeInt sourceInitializing;
+  private final MutableGaugeLong lastMarkerTS;
 
   public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id) {
     this.rms = rms;
@@ -146,6 +148,9 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
 
     sourceInitializingKey = this.keyPrefix + "isInitializing";
     sourceInitializing = rms.getMetricsRegistry().getGaugeInt(sourceInitializingKey, 0);
+
+    lastMarkerTSKey = this.keyPrefix + "lastMarkerTS";
+    lastMarkerTS = rms.getMetricsRegistry().getGauge(lastMarkerTSKey, 0L);
   }
 
   @Override
@@ -393,5 +398,13 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   @Override
   public long getEditsFiltered() {
     return this.walEditsFilteredCounter.value();
+  }
+
+  @Override public void updateLastMarkerTS(long lastMarkerTS) {
+    this.lastMarkerTS.set(lastMarkerTS);
+  }
+
+  @Override public long getLastMarkerTS() {
+    return this.lastMarkerTS.value();
   }
 }

@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfigBuilder;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.ReplicationTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -127,6 +128,7 @@ public class TestReplicationMarker {
 
   @Test
   public void testReplicationMarkerRow() throws Exception {
+    long now = EnvironmentEdgeManager.currentTime();
     // We have configured ReplicationTrackerChore to run every second. Sleeping so that it will
     // create enough sentinel rows.
     Thread.sleep(5000);
@@ -136,6 +138,10 @@ public class TestReplicationMarker {
     // Since we sync the marker edits while appending to wal, all the edits should be visible
     // to Replication threads immediately.
     assertTrue(getReplicatedEntries() >= 5);
+    MetricsSource metricsForCluster1 = getMetricsForSourceCluster();
+    long lastMarkerTS = metricsForCluster1.getLastMarkerTS();
+    // Make sure that last marker TS is greater than the test start time.
+    assertTrue(lastMarkerTS > now);
     // Force log roll.
     wal1.rollWriter(true);
     String walName2ForCluster1 = ((AbstractFSWAL) wal1).getCurrentFileName().getName();
@@ -261,5 +267,14 @@ public class TestReplicationMarker {
     assertEquals(1, sources.size());
     ReplicationSource source = (ReplicationSource) sources.get(0);
     return source.getTotalReplicatedEdits();
+  }
+
+  private MetricsSource getMetricsForSourceCluster() {
+    ReplicationSourceManager manager = utility1.getHBaseCluster().getRegionServer(0)
+      .getReplicationSourceService().getReplicationManager();
+    List<ReplicationSourceInterface> sources = manager.getSources();
+    assertEquals(1, sources.size());
+    ReplicationSource source = (ReplicationSource) sources.get(0);
+    return source.getSourceMetrics();
   }
 }

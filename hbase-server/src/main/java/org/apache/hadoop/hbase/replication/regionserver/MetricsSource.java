@@ -516,4 +516,16 @@ public class MetricsSource implements BaseSource {
   public long getWALReaderEditsBufferUsage() {
     return globalSourceSource.getWALReaderEditsBufferBytes();
   }
+
+  /**
+   * Updates the last replication marker timestamp that was replicated.
+   * @param lastMarkerTS
+   */
+  public void updateLastMarkerTS(long lastMarkerTS) {
+    singleSourceSource.updateLastMarkerTS(lastMarkerTS);
+  }
+
+  public long getLastMarkerTS() {
+    return singleSourceSource.getLastMarkerTS();
+  }
 }

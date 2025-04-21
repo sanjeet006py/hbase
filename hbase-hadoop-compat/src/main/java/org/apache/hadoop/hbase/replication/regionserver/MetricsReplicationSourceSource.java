@@ -54,6 +54,8 @@ public interface MetricsReplicationSourceSource extends BaseSource {
   public static final String SOURCE_FAILED_RECOVERY_QUEUES = "source.failedRecoverQueues";
   // This is to track the num of replication sources getting initialized
   public static final String SOURCE_INITIALIZING = "source.numInitializing";
+  // Tracks last replication marker timestamp which is successfully replicated to peer.
+  String LAST_MARKER_TIMESTAMP = "source.lastMarkerTS";
 
   void setLastShippedAge(long age);
 
@@ -120,4 +122,8 @@ public interface MetricsReplicationSourceSource extends BaseSource {
   void decrSourceInitializing();
 
   int getSourceInitializing();
+
+  void updateLastMarkerTS(long lastMarkerTS);
+
+  long getLastMarkerTS();
 }

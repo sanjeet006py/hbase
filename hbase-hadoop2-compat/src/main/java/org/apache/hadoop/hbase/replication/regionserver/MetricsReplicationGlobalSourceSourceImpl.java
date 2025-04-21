@@ -271,6 +271,15 @@ public class MetricsReplicationGlobalSourceSourceImpl
     return sourceInitializing.value();
   }
 
+  @Override public void updateLastMarkerTS(long lastMarkerTS) {
+    // Not implemented
+  }
+
+  @Override public long getLastMarkerTS() {
+    // Not implemented
+    return 0;
+  }
+
   @Override
   public void init() {
     rms.init();

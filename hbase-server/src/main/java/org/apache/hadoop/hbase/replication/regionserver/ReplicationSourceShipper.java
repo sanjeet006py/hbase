@@ -72,7 +72,7 @@ public class ReplicationSourceShipper extends Thread {
   protected final long sleepForRetries;
   // Maximum number of retries before taking bold actions
   protected final int maxRetriesMultiplier;
-  private final int DEFAULT_TIMEOUT = 20000;
+  public static final int DEFAULT_TIMEOUT = 20000;
   private final int getEntriesTimeout;
   private final int shipEditsTimeout;
 
@@ -217,6 +217,14 @@ public class ReplicationSourceShipper extends Thread {
           entries.get(entries.size() - 1).getKey().getWriteTime(), walGroupId);
         source.getSourceMetrics().updateTableLevelMetrics(entryBatch.getWalEntriesWithSize());
 
+        // Check if the batch contains replication marker edit and get the timestamp of the
+        // oldest marker edit.
+        Long lastMarkerTS = getLastReplicationMarkerTS(entries);
+        if (lastMarkerTS != null) {
+          LOG.info("Updating the last marker timestamp: {} for peer: {}",
+            lastMarkerTS, source.getPeerId());
+          source.getSourceMetrics().updateLastMarkerTS(lastMarkerTS);
+        }
         if (LOG.isTraceEnabled()) {
           LOG.debug("Replicated {} entries or {} operations in {} ms", entries.size(),
             entryBatch.getNbOperations(), (endTimeNs - startTimeNs) / 1000000);
@@ -231,6 +239,27 @@ public class ReplicationSourceShipper extends Thread {
         }
       }
     }
+  }
+
+  /**
+   * Returns the timestamp of the last replication marker edit if present
+   * otherwise return null
+   * @param entries entries in the batch.
+   * @return last replication marker edit TS.
+   */
+  private Long getLastReplicationMarkerTS(List<Entry> entries) {
+    Long editTS = null;
+    int size = entries.size();
+    // Process the last replication marker entry. Traverse the batch from last to first.
+    for (int i = size - 1; i >= 0; i--) {
+      WALEdit edit = entries.get(i).getEdit();
+      if (WALEdit.isReplicationMarkerEdit(edit)) {
+        // There is only 1 cell in a replication marker edit.
+        editTS = edit.getCells().get(0).getTimestamp();
+        break;
+      }
+    }
+    return editTS;
   }
 
   private void cleanUpHFileRefs(WALEdit edit) throws IOException {

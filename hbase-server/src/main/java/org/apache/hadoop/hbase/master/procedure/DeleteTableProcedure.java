@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.MetaTableAccessor;
@@ -305,6 +306,7 @@ public class DeleteTableProcedure
     final List<RegionInfo> regions, final boolean archive) throws IOException {
     final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
     final FileSystem fs = mfs.getFileSystem();
+    final Configuration conf = env.getMasterConfiguration();
 
     final Path tableDir = CommonFSUtils.getTableDir(mfs.getRootDir(), tableName);
 
@@ -323,8 +325,7 @@ public class DeleteTableProcedure
             }
           }
         }
-        HFileArchiver.archiveRegions(env.getMasterConfiguration(), fs, mfs.getRootDir(), tableDir,
-          regionDirList);
+        HFileArchiver.archiveRegions(conf, fs, mfs.getRootDir(), tableDir, regionDirList);
         if (!regionDirList.isEmpty()) {
           LOG.debug("Archived {} regions", tableName);
         }
@@ -335,7 +336,7 @@ public class DeleteTableProcedure
         CommonFSUtils.getTableDir(new Path(mfs.getRootDir(), MobConstants.MOB_DIR_NAME), tableName);
       Path regionDir = new Path(mobTableDir, MobUtils.getMobRegionInfo(tableName).getEncodedName());
       if (fs.exists(regionDir)) {
-        HFileArchiver.archiveRegion(fs, mfs.getRootDir(), mobTableDir, regionDir);
+        HFileArchiver.archiveRegion(conf, fs, mfs.getRootDir(), mobTableDir, regionDir);
       }
 
       // Delete table directory from FS

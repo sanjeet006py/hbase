@@ -47,9 +47,6 @@ public class ConnectionConfiguration {
   public static final long WRITE_BUFFER_PERIODIC_FLUSH_TIMERTICK_MS_DEFAULT = 1000L; // 1 second
   public static final String MAX_KEYVALUE_SIZE_KEY = "hbase.client.keyvalue.maxsize";
   public static final int MAX_KEYVALUE_SIZE_DEFAULT = 10485760;
-  public static final String BUFFERED_MUTATOR_MAX_MUTATIONS_KEY =
-    "hbase.client.write.buffer.maxmutations";
-  public static final int BUFFERED_MUTATOR_MAX_MUTATIONS_DEFAULT = -1;
   public static final String PRIMARY_CALL_TIMEOUT_MICROSECOND =
     "hbase.client.primaryCallTimeout.get";
   public static final int PRIMARY_CALL_TIMEOUT_MICROSECOND_DEFAULT = 10000; // 10ms
@@ -91,7 +88,6 @@ public class ConnectionConfiguration {
   private final int metaReplicaCallTimeoutMicroSecondScan;
   private final int retries;
   private final int maxKeyValueSize;
-  private final int bufferedMutatorMaxMutations;
   private final int rpcTimeout;
   private final int readRpcTimeout;
   private final int metaReadRpcTimeout;
@@ -147,9 +143,6 @@ public class ConnectionConfiguration {
 
     this.maxKeyValueSize = conf.getInt(MAX_KEYVALUE_SIZE_KEY, MAX_KEYVALUE_SIZE_DEFAULT);
 
-    this.bufferedMutatorMaxMutations =
-      conf.getInt(BUFFERED_MUTATOR_MAX_MUTATIONS_KEY, BUFFERED_MUTATOR_MAX_MUTATIONS_DEFAULT);
-
     this.rpcTimeout =
       conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
 
@@ -200,7 +193,6 @@ public class ConnectionConfiguration {
     this.retries = HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER;
     this.clientScannerAsyncPrefetch = Scan.DEFAULT_HBASE_CLIENT_SCANNER_ASYNC_PREFETCH;
     this.maxKeyValueSize = MAX_KEYVALUE_SIZE_DEFAULT;
-    this.bufferedMutatorMaxMutations = BUFFERED_MUTATOR_MAX_MUTATIONS_DEFAULT;
     this.readRpcTimeout = HConstants.DEFAULT_HBASE_RPC_TIMEOUT;
     this.metaReadRpcTimeout = HConstants.DEFAULT_HBASE_RPC_TIMEOUT;
     this.writeRpcTimeout = HConstants.DEFAULT_HBASE_RPC_TIMEOUT;
@@ -265,10 +257,6 @@ public class ConnectionConfiguration {
 
   public int getMaxKeyValueSize() {
     return maxKeyValueSize;
-  }
-
-  public int getBufferedMutatorMaxMutations() {
-    return bufferedMutatorMaxMutations;
   }
 
   public long getScannerMaxResultSize() {

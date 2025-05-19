@@ -101,8 +101,6 @@ class AsyncConnectionConfiguration {
 
   private final int maxKeyValueSize;
 
-  private final int bufferedMutatorMaxMutations;
-
   AsyncConnectionConfiguration(Configuration conf) {
     ConnectionConfiguration connectionConf = new ConnectionConfiguration(conf);
 
@@ -113,7 +111,6 @@ class AsyncConnectionConfiguration {
     this.writeBufferPeriodicFlushTimeoutNs = connectionConf.getWriteBufferPeriodicFlushTimeoutMs();
     this.maxKeyValueSize = connectionConf.getMaxKeyValueSize();
     this.maxRetries = connectionConf.getRetriesNumber();
-    this.bufferedMutatorMaxMutations = connectionConf.getBufferedMutatorMaxMutations();
 
     // fields from connection configuration that need to be converted to nanos
     this.metaOperationTimeoutNs =
@@ -231,9 +228,5 @@ class AsyncConnectionConfiguration {
 
   int getMaxKeyValueSize() {
     return maxKeyValueSize;
-  }
-
-  int getBufferedMutatorMaxMutations() {
-    return bufferedMutatorMaxMutations;
   }
 }

@@ -439,9 +439,9 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
     int numSplitPoints = opts.presplitRegions - 1;
     byte[][] splits = new byte[numSplitPoints][];
-    long jump = opts.totalRows / opts.presplitRegions;
+    int jump = opts.totalRows / opts.presplitRegions;
     for (int i = 0; i < numSplitPoints; i++) {
-      long rowkey = jump * (1 + i);
+      int rowkey = jump * (1 + i);
       splits[i] = format(rowkey);
     }
     return splits;
@@ -618,7 +618,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     // Make input random.
     Map<Integer, String> m = new TreeMap<>();
     Hash h = MurmurHash.getInstance();
-    long perClientRows = (opts.totalRows / opts.numClientThreads);
+    int perClientRows = (opts.totalRows / opts.numClientThreads);
     try {
       for (int j = 0; j < opts.numClientThreads; j++) {
         TestOptions next = new TestOptions(opts);
@@ -677,11 +677,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
     String cmdName = null;
     boolean nomapred = false;
     boolean filterAll = false;
-    long startRow = 0;
+    int startRow = 0;
     float size = 1.0f;
-    long perClientRunRows = DEFAULT_ROWS_PER_GB;
+    int perClientRunRows = DEFAULT_ROWS_PER_GB;
     int numClientThreads = 1;
-    long totalRows = DEFAULT_ROWS_PER_GB;
+    int totalRows = DEFAULT_ROWS_PER_GB;
     int measureAfter = 0;
     float sampleRate = 1.0f;
     /**
@@ -713,7 +713,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     boolean valueRandom = false;
     boolean valueZipf = false;
     int valueSize = DEFAULT_VALUE_LENGTH;
-    long period = (this.perClientRunRows / 10) == 0 ? perClientRunRows : perClientRunRows / 10;
+    int period = (this.perClientRunRows / 10) == 0 ? perClientRunRows : perClientRunRows / 10;
     int cycles = 1;
     int columns = 1;
     int families = 1;
@@ -870,7 +870,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       this.filterAll = filterAll;
     }
 
-    public void setStartRow(long startRow) {
+    public void setStartRow(int startRow) {
       this.startRow = startRow;
     }
 
@@ -886,7 +886,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       this.numClientThreads = numClientThreads;
     }
 
-    public void setTotalRows(long totalRows) {
+    public void setTotalRows(int totalRows) {
       this.totalRows = totalRows;
     }
 
@@ -998,7 +998,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return filterAll;
     }
 
-    public long getStartRow() {
+    public int getStartRow() {
       return startRow;
     }
 
@@ -1006,7 +1006,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return size;
     }
 
-    public long getPerClientRunRows() {
+    public int getPerClientRunRows() {
       return perClientRunRows;
     }
 
@@ -1014,7 +1014,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return numClientThreads;
     }
 
-    public long getTotalRows() {
+    public int getTotalRows() {
       return totalRows;
     }
 
@@ -1090,7 +1090,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return valueSize;
     }
 
-    public long getPeriod() {
+    public int getPeriod() {
       return period;
     }
 
@@ -1139,8 +1139,17 @@ public class PerformanceEvaluation extends Configured implements Tool {
    * A test. Subclass to particularize what happens per row.
    */
   static abstract class TestBase {
-    private final long everyN;
+    // Below is make it so when Tests are all running in the one
+    // jvm, that they each have a differently seeded Random.
+    private static final Random randomSeed = new Random(EnvironmentEdgeManager.currentTime());
 
+    private static long nextRandomSeed() {
+      return randomSeed.nextLong();
+    }
+
+    private final int everyN;
+
+    protected final Random rand = new Random(nextRandomSeed());
     protected final Configuration conf;
     protected final TestOptions opts;
 
@@ -1169,17 +1178,16 @@ public class PerformanceEvaluation extends Configured implements Tool {
       this.opts = options;
       this.status = status;
       this.testName = this.getClass().getSimpleName();
-      everyN = (long) (opts.totalRows / (opts.totalRows * opts.sampleRate));
+      everyN = (int) (opts.totalRows / (opts.totalRows * opts.sampleRate));
       if (options.isValueZipf()) {
-        this.zipf =
-          new RandomDistribution.Zipf(ThreadLocalRandom.current(), 1, options.getValueSize(), 1.2);
+        this.zipf = new RandomDistribution.Zipf(this.rand, 1, options.getValueSize(), 1.2);
       }
       LOG.info("Sampling 1 every " + everyN + " out of " + opts.perClientRunRows + " total rows.");
     }
 
-    int getValueLength() {
+    int getValueLength(final Random r) {
       if (this.opts.isValueRandom()) {
-        return ThreadLocalRandom.current().nextInt(opts.valueSize);
+        return r.nextInt(opts.valueSize);
       } else if (this.opts.isValueZipf()) {
         return Math.abs(this.zipf.nextInt());
       } else {
@@ -1251,7 +1259,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       }
     }
 
-    String generateStatus(final long sr, final long i, final long lr) {
+    String generateStatus(final int sr, final int i, final int lr) {
       return "row [start=" + sr + ", current=" + i + ", last=" + lr + "], latency ["
         + getShortLatencyReport() + "]"
         + (!isRandomValueSize() ? "" : ", value size [" + getShortValueSizeReport() + "]");
@@ -1261,7 +1269,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return opts.valueRandom;
     }
 
-    protected long getReportingPeriod() {
+    protected int getReportingPeriod() {
       return opts.period;
     }
 
@@ -1364,11 +1372,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
       return (System.nanoTime() - startTime) / 1000000;
     }
 
-    long getStartRow() {
+    int getStartRow() {
       return opts.startRow;
     }
 
-    long getLastRow() {
+    int getLastRow() {
       return getStartRow() + opts.perClientRunRows;
     }
 
@@ -1376,12 +1384,12 @@ public class PerformanceEvaluation extends Configured implements Tool {
      * Provides an extension point for tests that don't want a per row invocation.
      */
     void testTimed() throws IOException, InterruptedException {
-      long startRow = getStartRow();
-      long lastRow = getLastRow();
+      int startRow = getStartRow();
+      int lastRow = getLastRow();
       // Report on completion of 1/10th of total.
       for (int ii = 0; ii < opts.cycles; ii++) {
         if (opts.cycles > 1) LOG.info("Cycle=" + ii + " of " + opts.cycles);
-        for (long i = startRow; i < lastRow; i++) {
+        for (int i = startRow; i < lastRow; i++) {
           if (i % everyN != 0) continue;
           long startTime = System.nanoTime();
           boolean requestSent = false;
@@ -1427,7 +1435,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
      * @return true if the row was sent to server and need to record metrics. False if not, multiGet
      *         and multiPut e.g., the rows are sent to server only if enough gets/puts are gathered.
      */
-    abstract boolean testRow(final long i, final long startTime)
+    abstract boolean testRow(final int i, final long startTime)
       throws IOException, InterruptedException;
   }
 
@@ -1475,7 +1483,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
     MetaTest(Connection con, TestOptions options, Status status) {
       super(con, options, status);
-      keyLength = Long.toString(opts.perClientRunRows).length();
+      keyLength = Integer.toString(opts.perClientRunRows).length();
     }
 
     @Override
@@ -1486,7 +1494,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     /*
      * Generates Lexicographically ascending strings
      */
-    protected byte[] getSplitKey(final long i) {
+    protected byte[] getSplitKey(final int i) {
       return Bytes.toBytes(String.format("%0" + keyLength + "d", i));
     }
 
@@ -1523,11 +1531,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException, InterruptedException {
+    boolean testRow(final int i, final long startTime) throws IOException, InterruptedException {
       if (opts.randomSleep > 0) {
         Thread.sleep(ThreadLocalRandom.current().nextInt(opts.randomSleep));
       }
-      Get get = new Get(getRandomRow(opts.totalRows));
+      Get get = new Get(getRandomRow(this.rand, opts.totalRows));
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
         if (opts.addColumns) {
@@ -1580,8 +1588,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected long getReportingPeriod() {
-      long period = opts.perClientRunRows / 10;
+    protected int getReportingPeriod() {
+      int period = opts.perClientRunRows / 10;
       return period == 0 ? opts.perClientRunRows : period;
     }
 
@@ -1602,8 +1610,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected byte[] generateRow(final long i) {
-      return getRandomRow(opts.totalRows);
+    protected byte[] generateRow(final int i) {
+      return getRandomRow(this.rand, opts.totalRows);
     }
   }
 
@@ -1631,7 +1639,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       if (this.testScanner == null) {
         Scan scan = new Scan().withStartRow(format(opts.startRow)).setCaching(opts.caching)
           .setCacheBlocks(opts.cacheBlocks).setAsyncPrefetch(opts.asyncPrefetch)
@@ -1664,7 +1672,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException, InterruptedException {
+    boolean testRow(final int i, final long startTime) throws IOException, InterruptedException {
       Get get = new Get(format(i));
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
@@ -1700,22 +1708,22 @@ public class PerformanceEvaluation extends Configured implements Tool {
       }
     }
 
-    protected byte[] generateRow(final long i) {
+    protected byte[] generateRow(final int i) {
       return format(i);
     }
 
     @Override
     @SuppressWarnings("ReturnValueIgnored")
-    boolean testRow(final long i, final long startTime) throws IOException, InterruptedException {
+    boolean testRow(final int i, final long startTime) throws IOException, InterruptedException {
       byte[] row = generateRow(i);
       Put put = new Put(row);
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
         for (int column = 0; column < opts.columns; column++) {
           byte[] qualifier = column == 0 ? COLUMN_ZERO : Bytes.toBytes("" + column);
-          byte[] value = generateData(getValueLength());
+          byte[] value = generateData(this.rand, getValueLength(this.rand));
           if (opts.useTags) {
-            byte[] tag = generateData(TAG_LENGTH);
+            byte[] tag = generateData(this.rand, TAG_LENGTH);
             Tag[] tags = new Tag[opts.noOfTags];
             for (int n = 0; n < opts.noOfTags; n++) {
               Tag t = new ArrayBackedTag((byte) n, tag);
@@ -1781,10 +1789,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
-      Scan scan = new Scan().withStartRow(getRandomRow(opts.totalRows)).setCaching(opts.caching)
-        .setCacheBlocks(opts.cacheBlocks).setAsyncPrefetch(opts.asyncPrefetch)
-        .setReadType(opts.scanReadType).setScanMetricsEnabled(true);
+    boolean testRow(final int i, final long startTime) throws IOException {
+      Scan scan =
+        new Scan().withStartRow(getRandomRow(this.rand, opts.totalRows)).setCaching(opts.caching)
+          .setCacheBlocks(opts.cacheBlocks).setAsyncPrefetch(opts.asyncPrefetch)
+          .setReadType(opts.scanReadType).setScanMetricsEnabled(true);
       FilterList list = new FilterList();
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
@@ -1815,8 +1824,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected long getReportingPeriod() {
-      long period = opts.perClientRunRows / 100;
+    protected int getReportingPeriod() {
+      int period = opts.perClientRunRows / 100;
       return period == 0 ? opts.perClientRunRows : period;
     }
 
@@ -1828,7 +1837,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       Pair<byte[], byte[]> startAndStopRow = getStartAndStopRow();
       Scan scan = new Scan().withStartRow(startAndStopRow.getFirst())
         .withStopRow(startAndStopRow.getSecond()).setCaching(opts.caching)
@@ -1870,15 +1879,15 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
     protected abstract Pair<byte[], byte[]> getStartAndStopRow();
 
-    protected Pair<byte[], byte[]> generateStartAndStopRows(long maxRange) {
-      long start = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE) % opts.totalRows;
-      long stop = start + maxRange;
+    protected Pair<byte[], byte[]> generateStartAndStopRows(int maxRange) {
+      int start = this.rand.nextInt(Integer.MAX_VALUE) % opts.totalRows;
+      int stop = start + maxRange;
       return new Pair<>(format(start), format(stop));
     }
 
     @Override
-    protected long getReportingPeriod() {
-      long period = opts.perClientRunRows / 100;
+    protected int getReportingPeriod() {
+      int period = opts.perClientRunRows / 100;
       return period == 0 ? opts.perClientRunRows : period;
     }
   }
@@ -1941,11 +1950,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException, InterruptedException {
+    boolean testRow(final int i, final long startTime) throws IOException, InterruptedException {
       if (opts.randomSleep > 0) {
         Thread.sleep(ThreadLocalRandom.current().nextInt(opts.randomSleep));
       }
-      Get get = new Get(getRandomRow(opts.totalRows));
+      Get get = new Get(getRandomRow(this.rand, opts.totalRows));
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
         if (opts.addColumns) {
@@ -1989,8 +1998,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected long getReportingPeriod() {
-      long period = opts.perClientRunRows / 10;
+    protected int getReportingPeriod() {
+      int period = opts.perClientRunRows / 10;
       return period == 0 ? opts.perClientRunRows : period;
     }
 
@@ -2023,19 +2032,19 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException, InterruptedException {
+    boolean testRow(final int i, final long startTime) throws IOException, InterruptedException {
       if (opts.randomSleep > 0) {
         Thread.sleep(rd.nextInt(opts.randomSleep));
       }
-      HRegionLocation hRegionLocation = regionLocator.getRegionLocation(
-        getSplitKey(ThreadLocalRandom.current().nextLong(opts.perClientRunRows)), true);
+      HRegionLocation hRegionLocation =
+        regionLocator.getRegionLocation(getSplitKey(rd.nextInt(opts.perClientRunRows)), true);
       LOG.debug("get location for region: " + hRegionLocation);
       return true;
     }
 
     @Override
-    protected long getReportingPeriod() {
-      long period = opts.perClientRunRows / 10;
+    protected int getReportingPeriod() {
+      int period = opts.perClientRunRows / 10;
       return period == 0 ? opts.perClientRunRows : period;
     }
 
@@ -2051,8 +2060,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected byte[] generateRow(final long i) {
-      return getRandomRow(opts.totalRows);
+    protected byte[] generateRow(final int i) {
+      return getRandomRow(this.rand, opts.totalRows);
     }
 
   }
@@ -2063,8 +2072,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    protected byte[] generateRow(final long i) {
-      return getRandomRow(opts.totalRows);
+    protected byte[] generateRow(final int i) {
+      return getRandomRow(this.rand, opts.totalRows);
     }
 
   }
@@ -2085,7 +2094,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       if (this.testScanner == null) {
         Scan scan = new Scan().withStartRow(format(opts.startRow)).setCaching(opts.caching)
           .setCacheBlocks(opts.cacheBlocks).setAsyncPrefetch(opts.asyncPrefetch)
@@ -2133,12 +2142,12 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    long getStartRow() {
+    int getStartRow() {
       return 0;
     }
 
     @Override
-    long getLastRow() {
+    int getLastRow() {
       return opts.perClientRunRows;
     }
   }
@@ -2149,7 +2158,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       Increment increment = new Increment(format(i));
       // unlike checkAndXXX tests, which make most sense to do on a single value,
       // if multiple families are specified for an increment test we assume it is
@@ -2169,7 +2178,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       byte[] bytes = format(i);
       Append append = new Append(bytes);
       // unlike checkAndXXX tests, which make most sense to do on a single value,
@@ -2190,7 +2199,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       final byte[] bytes = format(i);
       // checkAndXXX tests operate on only a single value
       // Put a known value so when we go to check it, it is there.
@@ -2211,7 +2220,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       final byte[] bytes = format(i);
       // checkAndXXX tests operate on only a single value
       // Put a known value so when we go to check it, it is there.
@@ -2230,7 +2239,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       final byte[] bytes = format(i);
       // checkAndXXX tests operate on only a single value
       // Put a known value so when we go to check it, it is there.
@@ -2254,7 +2263,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       try {
         RegionInfo regionInfo = connection.getRegionLocator(table.getName())
           .getRegionLocation(getSplitKey(i), false).getRegion();
@@ -2279,7 +2288,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       Get get = new Get(format(i));
       for (int family = 0; family < opts.families; family++) {
         byte[] familyName = Bytes.toBytes(FAMILY_NAME_BASE + family);
@@ -2311,21 +2320,21 @@ public class PerformanceEvaluation extends Configured implements Tool {
       }
     }
 
-    protected byte[] generateRow(final long i) {
+    protected byte[] generateRow(final int i) {
       return format(i);
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       byte[] row = generateRow(i);
       Put put = new Put(row);
       for (int family = 0; family < opts.families; family++) {
         byte familyName[] = Bytes.toBytes(FAMILY_NAME_BASE + family);
         for (int column = 0; column < opts.columns; column++) {
           byte[] qualifier = column == 0 ? COLUMN_ZERO : Bytes.toBytes("" + column);
-          byte[] value = generateData(getValueLength());
+          byte[] value = generateData(this.rand, getValueLength(this.rand));
           if (opts.useTags) {
-            byte[] tag = generateData(TAG_LENGTH);
+            byte[] tag = generateData(this.rand, TAG_LENGTH);
             Tag[] tags = new Tag[opts.noOfTags];
             for (int n = 0; n < opts.noOfTags; n++) {
               Tag t = new ArrayBackedTag((byte) n, tag);
@@ -2367,12 +2376,12 @@ public class PerformanceEvaluation extends Configured implements Tool {
       super(con, options, status);
     }
 
-    protected byte[] generateRow(final long i) {
+    protected byte[] generateRow(final int i) {
       return format(i);
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       byte[] row = generateRow(i);
       Delete delete = new Delete(row);
       for (int family = 0; family < opts.families; family++) {
@@ -2399,7 +2408,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(final long i, final long startTime) throws IOException {
+    boolean testRow(final int i, final long startTime) throws IOException {
       List<RegionInfo> regionInfos = new ArrayList<RegionInfo>();
       RegionInfo regionInfo = (RegionInfoBuilder.newBuilder(TableName.valueOf(TABLE_NAME))
         .setStartKey(getSplitKey(i)).setEndKey(getSplitKey(i + 1)).build());
@@ -2408,7 +2417,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
       // write the serverName columns
       MetaTableAccessor.updateRegionLocation(connection, regionInfo,
-        ServerName.valueOf("localhost", 60010, ThreadLocalRandom.current().nextLong()), i,
+        ServerName.valueOf("localhost", 60010, rand.nextLong()), i,
         EnvironmentEdgeManager.currentTime());
       return true;
     }
@@ -2426,8 +2435,8 @@ public class PerformanceEvaluation extends Configured implements Tool {
     }
 
     @Override
-    boolean testRow(long i, final long startTime) throws IOException {
-      byte[] value = generateData(getValueLength());
+    boolean testRow(int i, final long startTime) throws IOException {
+      byte[] value = generateData(this.rand, getValueLength(this.rand));
       Scan scan = constructScan(value);
       ResultScanner scanner = null;
       try {
@@ -2474,7 +2483,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
    * @param timeMs Time taken in milliseconds.
    * @return String value with label, ie '123.76 MB/s'
    */
-  private static String calculateMbps(long rows, long timeMs, final int valueSize, int families,
+  private static String calculateMbps(int rows, long timeMs, final int valueSize, int families,
     int columns) {
     BigDecimal rowSize = BigDecimal.valueOf(ROW_LENGTH
       + ((valueSize + (FAMILY_NAME_BASE.length() + 1) + COLUMN_ZERO.length) * columns) * families);
@@ -2488,9 +2497,9 @@ public class PerformanceEvaluation extends Configured implements Tool {
    * @return Returns zero-prefixed ROW_LENGTH-byte wide decimal version of passed number (Does
    * absolute in case number is negative).
    */
-  public static byte[] format(final long number) {
+  public static byte[] format(final int number) {
     byte[] b = new byte[ROW_LENGTH];
-    long d = Math.abs(number);
+    int d = Math.abs(number);
     for (int i = b.length - 1; i >= 0; i--) {
       b[i] = (byte) ((d % 10) + '0');
       d /= 10;
@@ -2503,11 +2512,10 @@ public class PerformanceEvaluation extends Configured implements Tool {
    * test, generation of the key and value consumes about 30% of CPU time.
    * @return Generated random value to insert into a table cell.
    */
-  public static byte[] generateData(int length) {
+  public static byte[] generateData(final Random r, int length) {
     byte[] b = new byte[length];
     int i;
 
-    Random r = ThreadLocalRandom.current();
     for (i = 0; i < (length - 8); i += 8) {
       b[i] = (byte) (65 + r.nextInt(26));
       b[i + 1] = b[i];
@@ -2526,12 +2534,12 @@ public class PerformanceEvaluation extends Configured implements Tool {
     return b;
   }
 
-  static byte[] getRandomRow(final long totalRows) {
-    return format(generateRandomRow(totalRows));
+  static byte[] getRandomRow(final Random random, final int totalRows) {
+    return format(generateRandomRow(random, totalRows));
   }
 
-  static long generateRandomRow(final long totalRows) {
-    return ThreadLocalRandom.current().nextLong(Long.MAX_VALUE) % totalRows;
+  static int generateRandomRow(final Random random, final int totalRows) {
+    return random.nextInt(Integer.MAX_VALUE) % totalRows;
   }
 
   static RunResult runOneClient(final Class<? extends TestBase> cmd, Configuration conf,
@@ -2566,7 +2574,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
     status.setStatus("Finished " + cmd + " in " + totalElapsedTime + "ms at offset " + opts.startRow
       + " for " + opts.perClientRunRows + " rows" + " ("
-      + calculateMbps((long) (opts.perClientRunRows * opts.sampleRate), totalElapsedTime,
+      + calculateMbps((int) (opts.perClientRunRows * opts.sampleRate), totalElapsedTime,
         getAverageValueLength(opts), opts.families, opts.columns)
       + ")");
 
@@ -2761,7 +2769,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
       final String rows = "--rows=";
       if (cmd.startsWith(rows)) {
-        opts.perClientRunRows = Long.parseLong(cmd.substring(rows.length()));
+        opts.perClientRunRows = Integer.parseInt(cmd.substring(rows.length()));
         continue;
       }
 
@@ -2785,7 +2793,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
 
       final String startRow = "--startRow=";
       if (cmd.startsWith(startRow)) {
-        opts.startRow = Long.parseLong(cmd.substring(startRow.length()));
+        opts.startRow = Integer.parseInt(cmd.substring(startRow.length()));
         continue;
       }
 
@@ -3083,10 +3091,10 @@ public class PerformanceEvaluation extends Configured implements Tool {
         && (opts.getCmdName().equals(RANDOM_READ) || opts.getCmdName().equals(RANDOM_SEEK_SCAN)))
         && opts.size != DEFAULT_OPTS.size && opts.perClientRunRows != DEFAULT_OPTS.perClientRunRows
     ) {
-      opts.totalRows = (long) (opts.size * rowsPerGB);
+      opts.totalRows = (int) opts.size * rowsPerGB;
     } else if (opts.size != DEFAULT_OPTS.size) {
       // total size in GB specified
-      opts.totalRows = (long) (opts.size * rowsPerGB);
+      opts.totalRows = (int) opts.size * rowsPerGB;
       opts.perClientRunRows = opts.totalRows / opts.numClientThreads;
     } else {
       opts.totalRows = opts.perClientRunRows * opts.numClientThreads;

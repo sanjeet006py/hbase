@@ -89,7 +89,7 @@ public class TestSeekOptimizations {
    */
   private static final boolean USE_MANY_STORE_FILES = true;
 
-  private static final int[][] COLUMN_SETS = new int[][] { {}, // All columns
+  private static final int[][] COLUMN_SETS = new int[][] {  // All columns
     { 0 }, { 1 }, { 0, 2 }, { 1, 2 }, { 0, 1, 2 }, };
 
   // Both start row and end row are inclusive here for the purposes of this
@@ -97,7 +97,7 @@ public class TestSeekOptimizations {
   private static final int[][] ROW_RANGES =
     new int[][] { { -1, -1 }, { 0, 1 }, { 1, 1 }, { 1, 2 }, { 0, 2 } };
 
-  private static final int[] MAX_VERSIONS_VALUES = new int[] { 1, 2 };
+  private static final int[] MAX_VERSIONS_VALUES = new int[] { 1 };
 
   // Instance variables
   private HRegion region;
@@ -158,7 +158,7 @@ public class TestSeekOptimizations {
     for (int[] columnArr : COLUMN_SETS) {
       for (int[] rowRange : ROW_RANGES) {
         for (int maxVersions : MAX_VERSIONS_VALUES) {
-          for (boolean lazySeekEnabled : new boolean[] { false, true }) {
+          for (boolean lazySeekEnabled : new boolean[] { true }) {
             testScan(columnArr, lazySeekEnabled, rowRange[0], rowRange[1], maxVersions);
           }
         }

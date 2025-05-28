@@ -39,6 +39,8 @@ import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * KeyValueScanner adaptor over the Reader. It also provides hooks into bloom filter things.
@@ -46,6 +48,7 @@ import org.apache.yetus.audience.InterfaceStability;
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.PHOENIX)
 @InterfaceStability.Evolving
 public class StoreFileScanner implements KeyValueScanner {
+  private static final Logger LOG = LoggerFactory.getLogger(StoreFileScanner.class);
   // the reader it comes from:
   private final StoreFileReader reader;
   private final HFileScanner hfs;
@@ -382,6 +385,7 @@ public class StoreFileScanner implements KeyValueScanner {
     if (kv.getFamilyLength() == 0) {
       useBloom = false;
     }
+    LOG.info("Lazy seek for key: {}, file: {}", kv, reader.getReaderContext().getFilePath());
 
     boolean haveToSeek = true;
     if (useBloom) {
@@ -416,6 +420,8 @@ public class StoreFileScanner implements KeyValueScanner {
         // the next point when we have to consider this file again is when we
         // pass the max timestamp of this file (with the same row/column).
         setCurrentCell(PrivateCellUtil.createFirstOnRowColTS(kv, maxTimestampInFile));
+        LOG.info("Setting fake key pointing to first cell of the column: {} with timestamp: {}"
+          + ", file: {}", cur, maxTimestampInFile, reader.getReaderContext().getFilePath());
       } else {
         // This will be the case e.g. when we need to seek to the next
         // row/column, and we don't know exactly what they are, so we set the
@@ -434,6 +440,8 @@ public class StoreFileScanner implements KeyValueScanner {
     // is obviously not a "real real" seek, but unlike the fake KV earlier in
     // this method, we want this to be propagated to ScanQueryMatcher.
     setCurrentCell(PrivateCellUtil.createLastOnRowCol(kv));
+    LOG.info("Setting fake key pointing to last cell of the column: {}, file: {}", cur,
+      reader.getReaderContext().getFilePath());
 
     realSeekDone = true;
     return true;
@@ -455,6 +463,8 @@ public class StoreFileScanner implements KeyValueScanner {
   @Override
   public void enforceSeek() throws IOException {
     if (realSeekDone) return;
+    LOG.info("Doing real seek for KV: {}, file: {}", delayedSeekKV,
+      reader.getReaderContext().getFilePath());
 
     if (delayedReseek) {
       reseek(delayedSeekKV);

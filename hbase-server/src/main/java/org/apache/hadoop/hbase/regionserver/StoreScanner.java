@@ -253,11 +253,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
     List<KeyValueScanner> scanners = null;
     try {
+      LOG.info("Creating scanners for store: {}", store);
       // Pass columns to try to filter out unnecessary StoreFiles.
       scanners = selectScannersFrom(store,
         store.getScanners(cacheBlocks, scanUsePread, false, matcher, scan.getStartRow(),
           scan.includeStartRow(), scan.getStopRow(), scan.includeStopRow(), this.readPt,
           isOnlyLatestVersionScan(scan)));
+      for (KeyValueScanner scanner : scanners) {
+        LOG.info("Adding scanner: {}, for store: {}", scanner.getFilePath(), store);
+      }
 
       // Seek all scanners to the start of the Row (or if the exact matching row
       // key does not exist, then to the start of the next matching Row).
@@ -274,6 +278,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       addCurrentScanners(scanners);
       // Combine all seeked scanners with a heap
       resetKVHeap(scanners, comparator);
+      LOG.info("Opened store scanner for store: {}", store);
     } catch (IOException e) {
       clearAndClose(scanners);
       // remove us from the HStore#changedReaderObservers here or we'll have no chance to

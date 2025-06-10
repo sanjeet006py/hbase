@@ -75,6 +75,7 @@ public class ReplicationSourceShipper extends Thread {
   public static final int DEFAULT_TIMEOUT = 20000;
   private final int getEntriesTimeout;
   private final int shipEditsTimeout;
+  private long lastMarkerTS = 0;
 
   public ReplicationSourceShipper(Configuration conf, String walGroupId,
     ReplicationSourceLogQueue logQueue, ReplicationSource source) {
@@ -107,6 +108,7 @@ public class ReplicationSourceShipper extends Thread {
         continue;
       }
       try {
+        updateLastMarkerAge();
         WALEntryBatch entryBatch = entryReader.poll(getEntriesTimeout);
         LOG.debug("Shipper from source {} got entry batch from reader: {}", source.getQueueId(),
           entryBatch);
@@ -169,6 +171,8 @@ public class ReplicationSourceShipper extends Thread {
     source.getSourceMetrics()
       .setTimeStampNextToReplicate(entries.get(entries.size() - 1).getKey().getWriteTime());
     while (isActive()) {
+      // First thing to do is to update the last marker age.
+      updateLastMarkerAge();
       try {
         try {
           source.tryThrottle(currentSize);
@@ -221,9 +225,10 @@ public class ReplicationSourceShipper extends Thread {
         // oldest marker edit.
         Long lastMarkerTS = getLastReplicationMarkerTS(entries);
         if (lastMarkerTS != null) {
-          LOG.info("Updating the last marker timestamp: {} for peer: {}",
+          LOG.trace("Updating the last marker timestamp: {} for peer: {}",
             lastMarkerTS, source.getPeerId());
           source.getSourceMetrics().updateLastMarkerTS(lastMarkerTS);
+          this.lastMarkerTS = lastMarkerTS;
         }
         if (LOG.isTraceEnabled()) {
           LOG.debug("Replicated {} entries or {} operations in {} ms", entries.size(),
@@ -260,6 +265,14 @@ public class ReplicationSourceShipper extends Thread {
       }
     }
     return editTS;
+  }
+
+  private void updateLastMarkerAge() {
+    long now  = EnvironmentEdgeManager.currentTime();
+    long lastMarkerAge = now - lastMarkerTS;
+    source.getSourceMetrics().updateLastMarkerAge(lastMarkerAge);
+    LOG.trace("Updating the last marker age: {} for peer: {}",
+      lastMarkerAge, source.getPeerId());
   }
 
   private void cleanUpHFileRefs(WALEdit edit) throws IOException {

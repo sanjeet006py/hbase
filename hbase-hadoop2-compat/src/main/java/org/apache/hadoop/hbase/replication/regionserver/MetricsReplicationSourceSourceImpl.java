@@ -49,7 +49,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final String oldestWalAgeKey;
   private final String sourceInitializingKey;
   private final String lastMarkerTSKey;
-
+  private final String lastMarkerAgeKey;
   private final MutableHistogram ageOfLastShippedOpHist;
   private final MutableGaugeLong sizeOfLogQueueGauge;
   private final MutableFastCounter logReadInEditsCounter;
@@ -80,6 +80,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final MutableGaugeLong oldestWalAge;
   private final MutableGaugeInt sourceInitializing;
   private final MutableGaugeLong lastMarkerTS;
+  private final MutableGaugeLong lastMarkerAge;
 
   public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id) {
     this.rms = rms;
@@ -151,6 +152,9 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
 
     lastMarkerTSKey = this.keyPrefix + "lastMarkerTS";
     lastMarkerTS = rms.getMetricsRegistry().getGauge(lastMarkerTSKey, 0L);
+
+    lastMarkerAgeKey = this.keyPrefix + "lastMarkerAge";
+    lastMarkerAge = rms.getMetricsRegistry().getGauge(lastMarkerAgeKey, 0L);
   }
 
   @Override
@@ -234,6 +238,8 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     rms.removeMetric(completedRecoveryKey);
     rms.removeMetric(oldestWalAgeKey);
     rms.removeMetric(sourceInitializingKey);
+    rms.removeMetric(lastMarkerTSKey);
+    rms.removeMetric(lastMarkerAgeKey);
   }
 
   @Override
@@ -400,11 +406,23 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     return this.walEditsFilteredCounter.value();
   }
 
-  @Override public void updateLastMarkerTS(long lastMarkerTS) {
+  @Override
+  public void updateLastMarkerTS(long lastMarkerTS) {
     this.lastMarkerTS.set(lastMarkerTS);
   }
 
-  @Override public long getLastMarkerTS() {
+  @Override
+  public long getLastMarkerTS() {
     return this.lastMarkerTS.value();
+  }
+
+  @Override
+  public void updateLastMarkerAge(long lastMarkerAge) {
+    this.lastMarkerAge.set(lastMarkerAge);
+  }
+
+  @Override
+  public long getLastMarkerAge() {
+    return lastMarkerAge.value();
   }
 }

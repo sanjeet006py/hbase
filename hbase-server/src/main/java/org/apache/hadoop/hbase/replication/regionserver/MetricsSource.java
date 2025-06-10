@@ -528,4 +528,16 @@ public class MetricsSource implements BaseSource {
   public long getLastMarkerTS() {
     return singleSourceSource.getLastMarkerTS();
   }
+
+  /**
+   * Updates the last replication marker age
+   * @param lastMarkerAge
+   */
+  public void updateLastMarkerAge(long lastMarkerAge) {
+    singleSourceSource.updateLastMarkerAge(lastMarkerAge);
+  }
+
+  public long getLastMarkerAge() {
+    return singleSourceSource.getLastMarkerAge();
+  }
 }

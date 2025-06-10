@@ -281,6 +281,17 @@ public class MetricsReplicationGlobalSourceSourceImpl
   }
 
   @Override
+  public void updateLastMarkerAge(long lastMarkerAge) {
+    // Not implemented
+  }
+
+  @Override
+  public long getLastMarkerAge() {
+    // Not implemented
+    return 0;
+  }
+
+  @Override
   public void init() {
     rms.init();
   }

@@ -142,6 +142,8 @@ public class TestReplicationMarker {
     long lastMarkerTS = metricsForCluster1.getLastMarkerTS();
     // Make sure that last marker TS is greater than the test start time.
     assertTrue(lastMarkerTS > now);
+    long lastMarkerAge = metricsForCluster1.getLastMarkerAge();
+    assertTrue(lastMarkerAge >= 0);
     // Force log roll.
     wal1.rollWriter(true);
     String walName2ForCluster1 = ((AbstractFSWAL) wal1).getCurrentFileName().getName();

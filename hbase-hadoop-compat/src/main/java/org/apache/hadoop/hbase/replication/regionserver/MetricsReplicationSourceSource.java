@@ -126,4 +126,8 @@ public interface MetricsReplicationSourceSource extends BaseSource {
   void updateLastMarkerTS(long lastMarkerTS);
 
   long getLastMarkerTS();
+
+  void updateLastMarkerAge(long lastMarkerAge);
+
+  long getLastMarkerAge();
 }

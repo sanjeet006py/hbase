@@ -42,3 +42,11 @@
   is_ut: true
   testcases:
     - testCombinedBlockCacheStatsWithNoBlockType
+- suite: org.apache.hadoop.hbase.regionserver.TestCompaction
+  is_ut: true
+  testcases:
+    - testCompactionWithCorruptBlock
+- suite: org.apache.hadoop.hbase.regionserver.TestCompactionWithCoprocessor
+  is_ut: true
+  testcases:
+    - testCompactionWithCorruptBlock

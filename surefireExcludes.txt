@@ -18,3 +18,5 @@ org.apache.hadoop.hbase.coprocessor.example.TestZooKeeperScanPolicyObserver
 org.apache.hadoop.hbase.io.hfile.TestCombinedBlockCache
 org.apache.hadoop.hbase.regionserver.TestCompactionToolNpeFix
 org.apache.hadoop.hbase.client.TestSeparateClientZKCluster
+org.apache.hadoop.hbase.regionserver.TestCompaction
+org.apache.hadoop.hbase.regionserver.TestCompactionWithCoprocessor

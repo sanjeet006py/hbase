@@ -377,7 +377,11 @@ public abstract class TestReplicationSourceManager {
     ReplicationPeers rp1 =
       ReplicationFactory.getReplicationPeers(s1.getZooKeeper(), s1.getConfiguration());
     rp1.init();
+    // Make sure there are no in progress recovered queues.
+    assertEquals(0, manager.getGlobalMetrics().getNumInProgressRecoveredQueues());
     manager.claimQueue(server.getServerName(), "1");
+    // Make sure the in progress recovered queues incremented by 1.
+    assertEquals(1, manager.getGlobalMetrics().getNumInProgressRecoveredQueues());
     assertEquals(1, manager.getWalsByIdRecoveredQueues().size());
     String id = "1-" + server.getServerName().getServerName();
     assertEquals(files, manager.getWalsByIdRecoveredQueues().get(id).get(group));

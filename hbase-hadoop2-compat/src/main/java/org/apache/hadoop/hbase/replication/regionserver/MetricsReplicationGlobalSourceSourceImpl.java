@@ -57,6 +57,7 @@ public class MetricsReplicationGlobalSourceSourceImpl
   private final MutableFastCounter failedRecoveryQueue;
   private final MutableGaugeLong walReaderBufferUsageBytes;
   private final MutableGaugeInt sourceInitializing;
+  private final MutableGaugeInt numInProgressRecoveredQueues;
 
   public MetricsReplicationGlobalSourceSourceImpl(MetricsReplicationSourceImpl rms) {
     this.rms = rms;
@@ -102,6 +103,8 @@ public class MetricsReplicationGlobalSourceSourceImpl
     walReaderBufferUsageBytes =
       rms.getMetricsRegistry().getGauge(SOURCE_WAL_READER_EDITS_BUFFER, 0L);
     sourceInitializing = rms.getMetricsRegistry().getGaugeInt(SOURCE_INITIALIZING, 0);
+    numInProgressRecoveredQueues =
+      rms.getMetricsRegistry().getGaugeInt(SOURCE_NUM_IN_PROGRESS_RECOVERED_QUEUES, 0);
   }
 
   @Override
@@ -278,6 +281,18 @@ public class MetricsReplicationGlobalSourceSourceImpl
   @Override public long getLastMarkerTS() {
     // Not implemented
     return 0;
+  }
+
+  @Override public void incrNumInProgressRecoveredQueues() {
+    numInProgressRecoveredQueues.incr();
+  }
+
+  @Override public void decrNumInProgressRecoveredQueues() {
+    numInProgressRecoveredQueues.decr();
+  }
+
+  @Override public int getNumInProgressRecoveredQueues() {
+    return numInProgressRecoveredQueues.value();
   }
 
   @Override

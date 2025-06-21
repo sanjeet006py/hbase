@@ -425,4 +425,16 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   public long getLastMarkerAge() {
     return lastMarkerAge.value();
   }
+
+  @Override public void incrNumInProgressRecoveredQueues() {
+    // Do nothing. This is a global metric, not source specific.
+  }
+
+  @Override public void decrNumInProgressRecoveredQueues() {
+    // Do nothing. This is a global metric, not source specific.
+  }
+
+  @Override public int getNumInProgressRecoveredQueues() {
+    return 0;
+  }
 }

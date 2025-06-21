@@ -56,6 +56,7 @@ public interface MetricsReplicationSourceSource extends BaseSource {
   public static final String SOURCE_INITIALIZING = "source.numInitializing";
   // Tracks last replication marker timestamp which is successfully replicated to peer.
   String LAST_MARKER_TIMESTAMP = "source.lastMarkerTS";
+  String SOURCE_NUM_IN_PROGRESS_RECOVERED_QUEUES = "source.numInProgressRecoveredQueues";
 
   void setLastShippedAge(long age);
 
@@ -130,4 +131,12 @@ public interface MetricsReplicationSourceSource extends BaseSource {
   void updateLastMarkerAge(long lastMarkerAge);
 
   long getLastMarkerAge();
+
+  /* Increment in progress recovered queues */
+  void incrNumInProgressRecoveredQueues();
+
+  /* Decrement in progress recovered queues */
+  void decrNumInProgressRecoveredQueues();
+
+  int getNumInProgressRecoveredQueues();
 }

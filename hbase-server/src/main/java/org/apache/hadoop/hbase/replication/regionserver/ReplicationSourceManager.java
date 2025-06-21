@@ -393,11 +393,13 @@ public class ReplicationSourceManager {
           previousQueueIds.add(oldSource.getQueueId());
           oldSource.terminate(terminateMessage);
           iter.remove();
+          getGlobalMetrics().decrNumInProgressRecoveredQueues();
         }
       }
       for (String queueId : previousQueueIds) {
         ReplicationSourceInterface recoveredReplicationSource = createSource(queueId, peer);
         this.oldsources.add(recoveredReplicationSource);
+        getGlobalMetrics().incrNumInProgressRecoveredQueues();
         for (SortedSet<String> walsByGroup : walsByIdRecoveredQueues.get(queueId).values()) {
           walsByGroup.forEach(wal -> recoveredReplicationSource.enqueueLog(new Path(wal)));
         }
@@ -416,6 +418,7 @@ public class ReplicationSourceManager {
   void removeRecoveredSource(ReplicationSourceInterface src) {
     LOG.info("Done with the recovered queue " + src.getQueueId());
     this.oldsources.remove(src);
+    getGlobalMetrics().decrNumInProgressRecoveredQueues();
     // Delete queue from storage and memory
     deleteQueue(src.getQueueId());
     this.walsByIdRecoveredQueues.remove(src.getQueueId());
@@ -698,6 +701,7 @@ public class ReplicationSourceManager {
       }
       oldsources.add(src);
       LOG.info("Added source for recovered queue {}", src.getQueueId());
+      getGlobalMetrics().incrNumInProgressRecoveredQueues();
       for (String wal : walsSet) {
         LOG.trace("Enqueueing log from recovered queue for source: " + src.getQueueId());
         src.enqueueLog(new Path(oldLogDir, wal));

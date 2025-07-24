@@ -53,6 +53,7 @@ public class ServerSideScanMetrics {
     currentRegionScanMetricsData.createCounter(BYTES_READ_FROM_BLOCK_CACHE_METRIC_NAME);
     currentRegionScanMetricsData.createCounter(BYTES_READ_FROM_MEMSTORE_METRIC_NAME);
     currentRegionScanMetricsData.createCounter(BLOCK_READ_OPS_COUNT_METRIC_NAME);
+    currentRegionScanMetricsData.createCounter(FS_READ_TIME_METRIC_NAME);
   }
 
   /**
@@ -88,6 +89,8 @@ public class ServerSideScanMetrics {
   @Deprecated
   public static final String COUNT_OF_ROWS_FILTERED_KEY = COUNT_OF_ROWS_FILTERED_KEY_METRIC_NAME;
 
+  public static final String FS_READ_TIME_METRIC_NAME = "FS_READ_TIME";
+
   /**
    * number of rows filtered during scan RPC
    */
@@ -109,6 +112,8 @@ public class ServerSideScanMetrics {
     createCounter(BYTES_READ_FROM_MEMSTORE_METRIC_NAME);
 
   public final AtomicLong blockReadOpsCount = createCounter(BLOCK_READ_OPS_COUNT_METRIC_NAME);
+  
+  public final AtomicLong fsReadTime = createCounter(FS_READ_TIME_METRIC_NAME);
 
   /**
    * Sets counter with counterName to passed in value, does nothing if counter does not exist. If

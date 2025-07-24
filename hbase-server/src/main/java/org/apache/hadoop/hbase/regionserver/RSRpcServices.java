@@ -87,6 +87,7 @@ import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.VersionInfoUtil;
+import org.apache.hadoop.hbase.client.metrics.ServerSideScanMetrics;
 import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.exceptions.FailedSanityCheckException;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
@@ -3490,6 +3491,10 @@ public class RSRpcServices
         // Check to see if the client requested that we track metrics server side. If the
         // client requested metrics, retrieve the metrics from the scanner context.
         if (trackMetrics) {
+          if (rpcCall != null) {
+            scannerContext.getMetrics().setCounter(ServerSideScanMetrics.FS_READ_TIME_METRIC_NAME,
+              rpcCall.getFsReadTime());
+          }
           Map<String, Long> metrics = scannerContext.getMetrics().getMetricsMap();
           ScanMetrics.Builder metricBuilder = ScanMetrics.newBuilder();
           NameInt64Pair.Builder pairBuilder = NameInt64Pair.newBuilder();

@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.io.hfile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
@@ -169,7 +170,7 @@ public class TestBytesReadFromFs {
         .withFilePath(path).withFileSystem(fs).withFileSize(fileSize).build();
 
     // Read HFile trailer and create HFileContext
-    HFileInfo hfile = new HFileInfo(readerContext, conf);
+    HFileInfo hfile = new HFileInfo(readerContext, conf, Optional.empty());
     FixedFileTrailer trailer = hfile.getTrailer();
 
     // Read HFile info and load-on-open data section (we will read root again explicitly later)
@@ -260,7 +261,7 @@ public class TestBytesReadFromFs {
     ThreadLocalServerSideScanMetrics.getBytesReadFromFsAndReset();
     ThreadLocalServerSideScanMetrics.getBlockReadOpsCountAndReset();
     // Read HFile trailer
-    HFileInfo hfile = new HFileInfo(readerContext, conf);
+    HFileInfo hfile = new HFileInfo(readerContext, conf, Optional.empty());
     FixedFileTrailer trailer = hfile.getTrailer();
     Assert.assertEquals(trailer.getTrailerSize(),
       ThreadLocalServerSideScanMetrics.getBytesReadFromFsAndReset());

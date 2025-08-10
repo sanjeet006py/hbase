@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -187,7 +188,7 @@ public class TestHalfStoreFileReader {
         .withReaderType(ReaderContext.ReaderType.PREAD).withFileSystem(fs).withFilePath(p);
     ReaderContext context = contextBuilder.build();
     StoreFileInfo storeFileInfo =
-      new StoreFileInfo(TEST_UTIL.getConfiguration(), fs, fs.getFileStatus(p), bottom);
+      new StoreFileInfo(TEST_UTIL.getConfiguration(), fs, fs.getFileStatus(p), bottom, Optional.empty());
     storeFileInfo.initHFileInfo(context);
     final HalfStoreFileReader halfreader =
       (HalfStoreFileReader) storeFileInfo.createReader(context, cacheConf);
@@ -289,7 +290,7 @@ public class TestHalfStoreFileReader {
     CacheConfig cacheConfig) throws IOException {
     ReaderContext context = new ReaderContextBuilder().withFileSystemAndPath(fs, p).build();
     StoreFileInfo storeFileInfo =
-      new StoreFileInfo(TEST_UTIL.getConfiguration(), fs, fs.getFileStatus(p), bottom);
+      new StoreFileInfo(TEST_UTIL.getConfiguration(), fs, fs.getFileStatus(p), bottom, Optional.empty());
     storeFileInfo.initHFileInfo(context);
     final HalfStoreFileReader halfreader =
       (HalfStoreFileReader) storeFileInfo.createReader(context, cacheConfig);

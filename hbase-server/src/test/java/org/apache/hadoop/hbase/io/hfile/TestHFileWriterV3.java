@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -192,7 +193,7 @@ public class TestHFileWriterV3 {
     FSDataInputStreamWrapper wrapper = new FSDataInputStreamWrapper(fs, hfilePath);
     readerContext = new ReaderContextBuilder().withFilePath(hfilePath).withFileSize(fileSize)
       .withFileSystem(wrapper.getHfs()).withInputStreamWrapper(wrapper).build();
-    HFileInfo hfile = new HFileInfo(readerContext, conf);
+    HFileInfo hfile = new HFileInfo(readerContext, conf, Optional.empty());
     HFile.Reader reader = new HFilePreadReader(readerContext, hfile, cacheConfig, conf);
     hfile.initMetaAndIndex(reader);
     if (findMidKey) {

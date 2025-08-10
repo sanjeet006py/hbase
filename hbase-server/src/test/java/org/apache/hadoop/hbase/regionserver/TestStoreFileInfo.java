@@ -23,6 +23,8 @@ import static org.junit.Assert.assertFalse;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Optional;
+
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -94,9 +96,9 @@ public class TestStoreFileInfo {
       new Path(mob, "f1"), new Path(archive, "f1"));
 
     StoreFileInfo info1 =
-      new StoreFileInfo(TEST_UTIL.getConfiguration(), TEST_UTIL.getTestFileSystem(), null, link1);
+      new StoreFileInfo(TEST_UTIL.getConfiguration(), TEST_UTIL.getTestFileSystem(), null, link1, Optional.empty());
     StoreFileInfo info2 =
-      new StoreFileInfo(TEST_UTIL.getConfiguration(), TEST_UTIL.getTestFileSystem(), null, link2);
+      new StoreFileInfo(TEST_UTIL.getConfiguration(), TEST_UTIL.getTestFileSystem(), null, link2, Optional.empty());
 
     assertEquals(info1, info2);
     assertEquals(info1.hashCode(), info2.hashCode());

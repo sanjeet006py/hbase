@@ -18,6 +18,8 @@
 package org.apache.hadoop.hbase.util;
 
 import java.io.IOException;
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -128,23 +130,24 @@ public class ServerRegionReplicaUtil extends RegionReplicaUtil {
       return tracker.getStoreFileInfo(path, true);
     }
 
+    Optional<TableName> tableName = Optional.of(regionInfo.getTable());
     // else create a store file link. The link file does not exists on filesystem though.
     if (HFileLink.isHFileLink(path) || StoreFileInfo.isHFile(path)) {
       HFileLink link = HFileLink.build(conf, regionInfoForFs.getTable(),
         regionInfoForFs.getEncodedName(), familyName, path.getName());
-      return new StoreFileInfo(conf, fs, link.getFileStatus(fs), link);
+      return new StoreFileInfo(conf, fs, link.getFileStatus(fs), link, tableName);
     } else if (StoreFileInfo.isReference(path)) {
       Reference reference = tracker.readReference(path);
       Path referencePath = StoreFileInfo.getReferredToFile(path);
       if (HFileLink.isHFileLink(referencePath)) {
         // HFileLink Reference
         HFileLink link = HFileLink.buildFromHFileLinkPattern(conf, referencePath);
-        return new StoreFileInfo(conf, fs, link.getFileStatus(fs), reference, link);
+        return new StoreFileInfo(conf, fs, link.getFileStatus(fs), reference, link, tableName);
       } else {
         // Reference
         HFileLink link = HFileLink.build(conf, regionInfoForFs.getTable(),
           regionInfoForFs.getEncodedName(), familyName, path.getName());
-        return new StoreFileInfo(conf, fs, link.getFileStatus(fs), reference);
+        return new StoreFileInfo(conf, fs, link.getFileStatus(fs), reference, tableName);
       }
     } else {
       throw new IOException("path=" + path + " doesn't look like a valid StoreFile");

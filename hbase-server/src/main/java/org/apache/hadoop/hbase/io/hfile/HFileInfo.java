@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -39,6 +40,7 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.ExtendedCell;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.io.crypto.Cipher;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
 import org.apache.hadoop.hbase.protobuf.ProtobufMagic;
@@ -123,12 +125,15 @@ public class HFileInfo implements SortedMap<byte[], byte[]> {
 
   private FixedFileTrailer trailer;
   private HFileContext hfileContext;
+  private Optional<TableName> tableName = Optional.empty();
 
   public HFileInfo() {
     super();
   }
 
-  public HFileInfo(ReaderContext context, Configuration conf) throws IOException {
+  public HFileInfo(ReaderContext context, Configuration conf, Optional<TableName> tableName)
+    throws IOException {
+    this.tableName = tableName;
     this.initTrailerAndContext(context, conf);
   }
 
@@ -424,6 +429,9 @@ public class HFileInfo implements SortedMap<byte[], byte[]> {
       cryptoContext.setCipher(cipher);
       cryptoContext.setKey(key);
       builder.withEncryptionContext(cryptoContext);
+    }
+    if (tableName.isPresent()) {
+      builder.withTableName(tableName.get().getName());
     }
     HFileContext context = builder.build();
     return context;

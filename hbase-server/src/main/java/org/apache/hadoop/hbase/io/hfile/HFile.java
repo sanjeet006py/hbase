@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.ExtendedCell;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.io.FSDataInputStreamWrapper;
 import org.apache.hadoop.hbase.io.MetricsIO;
 import org.apache.hadoop.hbase.io.compress.Compression;
@@ -527,6 +528,11 @@ public final class HFile {
     return createReader(fs, path, CacheConfig.DISABLED, true, conf);
   }
 
+  public static Reader createReader(FileSystem fs, Path path, CacheConfig cacheConf,
+    boolean primaryReplicaReader, Configuration conf) throws IOException {
+    return createReader(fs, path, cacheConf, primaryReplicaReader, conf, Optional.empty());
+  }
+
   /**
    * @param fs                   filesystem
    * @param path                 Path to file to read
@@ -539,14 +545,14 @@ public final class HFile {
    * @see CacheConfig#CacheConfig(Configuration)
    */
   public static Reader createReader(FileSystem fs, Path path, CacheConfig cacheConf,
-    boolean primaryReplicaReader, Configuration conf) throws IOException {
+    boolean primaryReplicaReader, Configuration conf, Optional<TableName> tableName) throws IOException {
     Preconditions.checkNotNull(cacheConf, "Cannot create Reader with null CacheConf");
     FSDataInputStreamWrapper stream = new FSDataInputStreamWrapper(fs, path);
     ReaderContext context =
       new ReaderContextBuilder().withFilePath(path).withInputStreamWrapper(stream)
         .withFileSize(fs.getFileStatus(path).getLen()).withFileSystem(stream.getHfs())
         .withPrimaryReplicaReader(primaryReplicaReader).withReaderType(ReaderType.PREAD).build();
-    HFileInfo fileInfo = new HFileInfo(context, conf);
+    HFileInfo fileInfo = new HFileInfo(context, conf, tableName);
     Reader reader = createReader(context, fileInfo, cacheConf, conf);
     fileInfo.initMetaAndIndex(reader);
     return reader;

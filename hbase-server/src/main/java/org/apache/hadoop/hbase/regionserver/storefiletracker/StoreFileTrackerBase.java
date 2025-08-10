@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -319,7 +320,7 @@ abstract class StoreFileTrackerBase implements StoreFileTracker {
         throw new IOException("path=" + p + " doesn't look like a valid StoreFile");
       }
     return new StoreFileInfo(conf, fs, createdTimestamp, initialPath, size, reference, link,
-      isPrimaryReplica);
+      isPrimaryReplica, Optional.of(ctx.getTableName()));
   }
 
   public String createHFileLink(final TableName linkedTable, final String linkedRegion,

@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.hadoop.conf.Configuration;
@@ -124,7 +125,7 @@ public class TestHFile {
 
   public static Reader createReaderFromStream(ReaderContext context, CacheConfig cacheConf,
     Configuration conf) throws IOException {
-    HFileInfo fileInfo = new HFileInfo(context, conf);
+    HFileInfo fileInfo = new HFileInfo(context, conf, Optional.empty());
     Reader preadReader = HFile.createReader(context, fileInfo, cacheConf, conf);
     fileInfo.initMetaAndIndex(preadReader);
     preadReader.close();

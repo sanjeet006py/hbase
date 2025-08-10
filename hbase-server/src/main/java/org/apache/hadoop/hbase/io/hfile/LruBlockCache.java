@@ -21,6 +21,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.lang.ref.WeakReference;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,8 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.util.ClassSize;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -240,6 +243,8 @@ public class LruBlockCache implements FirstLevelBlockCache {
    */
   private transient BlockCache victimHandler = null;
 
+  Map<String, Pair<LongAdder, LongAdder>> tableLevelCacheStats = new HashMap<>();
+
   /**
    * Default constructor. Specify maximum size and expected average block size (approximation is
    * fine).
@@ -430,6 +435,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
     cb = new LruCachedBlock(cacheKey, buf, count.incrementAndGet(), inMemory);
     long newSize = updateSizeMetrics(cb, false);
     map.put(cacheKey, cb);
+    increaseLoadBlockCount(cb.getBuffer());
     long val = elements.incrementAndGet();
     if (buf.getBlockType().isBloom()) {
       bloomBlockElements.increment();
@@ -447,6 +453,18 @@ public class LruBlockCache implements FirstLevelBlockCache {
     }
   }
 
+  private void increaseLoadBlockCount(Cacheable cb) {
+    byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
+    if (tableNameBytes == null || tableNameBytes.length == 0) {
+      return;
+    }
+    String tableName = Bytes.toString(tableNameBytes);
+    if (!tableLevelCacheStats.containsKey(tableName)) {
+      tableLevelCacheStats.put(tableName, new Pair<>(new LongAdder(), new LongAdder()));
+    }
+    tableLevelCacheStats.get(tableName).getFirst().increment();
+  }
+  
   /**
    * Sanity-checking for parity between actual block cache content and metrics. Intended only for
    * use with TRACE level logging and -ea JVM.
@@ -637,7 +655,20 @@ public class LruBlockCache implements FirstLevelBlockCache {
       // update the stats counter.
       stats.evicted(block.getCachedTime(), block.getCacheKey().isPrimary());
     }
+    increaseEvictedBlockCount(block.getBuffer());
     return block.heapSize();
+  }
+
+  private void increaseEvictedBlockCount(Cacheable cb) {
+    byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
+    if (tableNameBytes == null || tableNameBytes.length == 0) {
+      return;
+    }
+    String tableName = Bytes.toString(tableNameBytes);
+    if (!tableLevelCacheStats.containsKey(tableName)) {
+      tableLevelCacheStats.put(tableName, new Pair<>(new LongAdder(), new LongAdder()));
+    }
+    tableLevelCacheStats.get(tableName).getSecond().increment();
   }
 
   /**
@@ -1032,7 +1063,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
         ? "0,"
         : (StringUtils.formatPercent(stats.getHitCachingRatio(), 2) + ", "))
       + "evictions=" + stats.getEvictionCount() + ", " + "evicted=" + stats.getEvictedCount() + ", "
-      + "evictedPerRun=" + stats.evictedPerEviction());
+      + "evictedPerRun=" + stats.evictedPerEviction() + ", table level block load,evict count=" + tableLevelCacheStats);
   }
 
   /**

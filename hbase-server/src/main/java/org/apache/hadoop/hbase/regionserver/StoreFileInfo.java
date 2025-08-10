@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -29,6 +30,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.io.FSDataInputStreamWrapper;
 import org.apache.hadoop.hbase.io.HFileLink;
 import org.apache.hadoop.hbase.io.HalfStoreFileReader;
@@ -113,9 +115,11 @@ public class StoreFileInfo implements Configurable {
   // done.
   private final AtomicInteger refCount = new AtomicInteger(0);
 
+  private final Optional<TableName> tableName;
+
   private StoreFileInfo(final Configuration conf, final FileSystem fs, final FileStatus fileStatus,
-    final Path initialPath, final boolean primaryReplica, final StoreFileTracker sft)
-    throws IOException {
+    final Path initialPath, final boolean primaryReplica, final StoreFileTracker sft,
+    final Optional<TableName> tableName) throws IOException {
     assert fs != null;
     assert initialPath != null;
     assert conf != null;
@@ -158,6 +162,7 @@ public class StoreFileInfo implements Configurable {
     } else {
       throw new IOException("path=" + p + " doesn't look like a valid StoreFile");
     }
+    this.tableName = tableName;
   }
 
   /**
@@ -167,8 +172,8 @@ public class StoreFileInfo implements Configurable {
    * @param fileStatus The {@link FileStatus} of the file
    */
   public StoreFileInfo(final Configuration conf, final FileSystem fs, final FileStatus fileStatus,
-    final HFileLink link) {
-    this(conf, fs, fileStatus, null, link);
+    final HFileLink link, final Optional<TableName> tableName) {
+    this(conf, fs, fileStatus, null, link, tableName);
   }
 
   /**
@@ -179,8 +184,8 @@ public class StoreFileInfo implements Configurable {
    * @param reference  The reference instance
    */
   public StoreFileInfo(final Configuration conf, final FileSystem fs, final FileStatus fileStatus,
-    final Reference reference) {
-    this(conf, fs, fileStatus, reference, null);
+    final Reference reference, final Optional<TableName> tableName) {
+    this(conf, fs, fileStatus, reference, null, tableName);
   }
 
   /**
@@ -192,7 +197,7 @@ public class StoreFileInfo implements Configurable {
    * @param link       The link instance
    */
   public StoreFileInfo(final Configuration conf, final FileSystem fs, final FileStatus fileStatus,
-    final Reference reference, final HFileLink link) {
+    final Reference reference, final HFileLink link, final Optional<TableName> tableName) {
     this.fs = fs;
     this.conf = conf;
     this.primaryReplica = false;
@@ -202,6 +207,7 @@ public class StoreFileInfo implements Configurable {
     this.link = link;
     this.noReadahead =
       this.conf.getBoolean(STORE_FILE_READER_NO_READAHEAD, DEFAULT_STORE_FILE_READER_NO_READAHEAD);
+    this.tableName = tableName;
   }
 
   /**
@@ -214,7 +220,7 @@ public class StoreFileInfo implements Configurable {
    */
   public StoreFileInfo(final Configuration conf, final FileSystem fs, final long createdTimestamp,
     final Path initialPath, final long size, final Reference reference, final HFileLink link,
-    final boolean primaryReplica) {
+    final boolean primaryReplica, final Optional<TableName> tableName) {
     this.fs = fs;
     this.conf = conf;
     this.primaryReplica = primaryReplica;
@@ -225,6 +231,7 @@ public class StoreFileInfo implements Configurable {
     this.link = link;
     this.noReadahead =
       this.conf.getBoolean(STORE_FILE_READER_NO_READAHEAD, DEFAULT_STORE_FILE_READER_NO_READAHEAD);
+    this.tableName = tableName;
   }
 
   @Override
@@ -770,7 +777,7 @@ public class StoreFileInfo implements Configurable {
   }
 
   public void initHFileInfo(ReaderContext context) throws IOException {
-    this.hfileInfo = new HFileInfo(context, conf);
+    this.hfileInfo = new HFileInfo(context, conf, tableName);
   }
 
   int getRefCount() {
@@ -787,11 +794,17 @@ public class StoreFileInfo implements Configurable {
 
   public static StoreFileInfo createStoreFileInfoForHFile(final Configuration conf,
     final FileSystem fs, final Path initialPath, final boolean primaryReplica) throws IOException {
+    return createStoreFileInfoForHFile(conf, fs, initialPath, primaryReplica, Optional.empty());
+  }
+
+  public static StoreFileInfo createStoreFileInfoForHFile(final Configuration conf,
+    final FileSystem fs, final Path initialPath, final boolean primaryReplica,
+    final Optional<TableName> tableName) throws IOException {
     if (HFileLink.isHFileLink(initialPath) || isReference(initialPath)) {
       throw new InvalidHFileException("Path " + initialPath + " is a Hfile link or a Regerence");
     }
     StoreFileInfo storeFileInfo =
-      new StoreFileInfo(conf, fs, null, initialPath, primaryReplica, null);
+      new StoreFileInfo(conf, fs, null, initialPath, primaryReplica, null, tableName);
     return storeFileInfo;
   }
 

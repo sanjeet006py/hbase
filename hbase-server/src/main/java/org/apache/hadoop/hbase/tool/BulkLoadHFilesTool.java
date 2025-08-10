@@ -807,7 +807,7 @@ public class BulkLoadHFilesTool extends Configured implements BulkLoadHFiles, To
     try {
       ReaderContext context = new ReaderContextBuilder().withFileSystemAndPath(fs, inFile).build();
       StoreFileInfo storeFileInfo =
-        new StoreFileInfo(conf, fs, fs.getFileStatus(inFile), reference);
+        new StoreFileInfo(conf, fs, fs.getFileStatus(inFile), reference, Optional.empty());
       storeFileInfo.initHFileInfo(context);
       halfReader = storeFileInfo.createReader(context, cacheConf);
       storeFileInfo.getHFileInfo().initMetaAndIndex(halfReader.getHFileReader());

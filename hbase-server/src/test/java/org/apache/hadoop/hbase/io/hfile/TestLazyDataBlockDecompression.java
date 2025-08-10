@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -119,7 +120,7 @@ public class TestLazyDataBlockDecompression {
     FixedFileTrailer trailer = FixedFileTrailer.readFromStream(fsdis.getStream(false), fileSize);
     ReaderContext context = new ReaderContextBuilder().withFilePath(path).withFileSize(fileSize)
       .withFileSystem(fsdis.getHfs()).withInputStreamWrapper(fsdis).build();
-    HFileInfo fileInfo = new HFileInfo(context, conf);
+    HFileInfo fileInfo = new HFileInfo(context, conf, Optional.empty());
     HFile.Reader reader = new HFilePreadReader(context, fileInfo, cacheConfig, conf);
     fileInfo.initMetaAndIndex(reader);
     long offset = trailer.getFirstDataBlockOffset(), max = trailer.getLastDataBlockOffset();

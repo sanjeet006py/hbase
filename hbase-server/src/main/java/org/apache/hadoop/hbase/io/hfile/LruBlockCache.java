@@ -145,6 +145,9 @@ public class LruBlockCache implements FirstLevelBlockCache {
 
   private static final boolean DEFAULT_IN_MEMORY_FORCE_MODE = false;
 
+  private static final String LRU_ENABLE_TABLE_LEVEL_CACHE_STATS =
+    "hbase.lru.blockcache.enable.table.level.cache.stats";
+
   /* Statistics thread */
   private static final int STAT_THREAD_PERIOD = 60 * 5;
   private static final String LRU_MAX_BLOCK_SIZE = "hbase.lru.max.block.size";
@@ -237,6 +240,9 @@ public class LruBlockCache implements FirstLevelBlockCache {
   /** Whether in-memory hfile's data block has higher priority when evicting */
   private boolean forceInMemory;
 
+  /** Whether to enable table level cache stats */
+  private final boolean enableTableLevelCacheStats;
+
   /**
    * Where to send victims (blocks evicted/missing from the cache). This is used only when we use an
    * external cache as L2. Note: See org.apache.hadoop.hbase.io.hfile.MemcachedBlockCache
@@ -264,7 +270,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
     this(maxSize, blockSize, evictionThread, (int) Math.ceil(1.2 * maxSize / blockSize),
       DEFAULT_LOAD_FACTOR, DEFAULT_CONCURRENCY_LEVEL, DEFAULT_MIN_FACTOR, DEFAULT_ACCEPTABLE_FACTOR,
       DEFAULT_SINGLE_FACTOR, DEFAULT_MULTI_FACTOR, DEFAULT_MEMORY_FACTOR,
-      DEFAULT_HARD_CAPACITY_LIMIT_FACTOR, false, DEFAULT_MAX_BLOCK_SIZE);
+      DEFAULT_HARD_CAPACITY_LIMIT_FACTOR, false, DEFAULT_MAX_BLOCK_SIZE, false);
   }
 
   public LruBlockCache(long maxSize, long blockSize, boolean evictionThread, Configuration conf) {
@@ -277,7 +283,8 @@ public class LruBlockCache implements FirstLevelBlockCache {
       conf.getFloat(LRU_MEMORY_PERCENTAGE_CONFIG_NAME, DEFAULT_MEMORY_FACTOR),
       conf.getFloat(LRU_HARD_CAPACITY_LIMIT_FACTOR_CONFIG_NAME, DEFAULT_HARD_CAPACITY_LIMIT_FACTOR),
       conf.getBoolean(LRU_IN_MEMORY_FORCE_MODE_CONFIG_NAME, DEFAULT_IN_MEMORY_FORCE_MODE),
-      conf.getLong(LRU_MAX_BLOCK_SIZE, DEFAULT_MAX_BLOCK_SIZE));
+      conf.getLong(LRU_MAX_BLOCK_SIZE, DEFAULT_MAX_BLOCK_SIZE),
+      conf.getBoolean(LRU_ENABLE_TABLE_LEVEL_CACHE_STATS, false));
   }
 
   public LruBlockCache(long maxSize, long blockSize, Configuration conf) {
@@ -301,7 +308,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
   public LruBlockCache(long maxSize, long blockSize, boolean evictionThread, int mapInitialSize,
     float mapLoadFactor, int mapConcurrencyLevel, float minFactor, float acceptableFactor,
     float singleFactor, float multiFactor, float memoryFactor, float hardLimitFactor,
-    boolean forceInMemory, long maxBlockSize) {
+    boolean forceInMemory, long maxBlockSize, boolean enableTableLevelCacheStats) {
     this.maxBlockSize = maxBlockSize;
     if (
       singleFactor + multiFactor + memoryFactor != 1 || singleFactor < 0 || multiFactor < 0
@@ -341,6 +348,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
     // every five minutes.
     this.scheduleThreadPool.scheduleAtFixedRate(new StatisticsThread(this), STAT_THREAD_PERIOD,
       STAT_THREAD_PERIOD, TimeUnit.SECONDS);
+    this.enableTableLevelCacheStats = enableTableLevelCacheStats;
   }
 
   @Override
@@ -454,6 +462,9 @@ public class LruBlockCache implements FirstLevelBlockCache {
   }
 
   private void increaseLoadBlockCount(Cacheable cb) {
+    if (!enableTableLevelCacheStats) {
+      return;
+    }
     byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
     if (tableNameBytes == null || tableNameBytes.length == 0) {
       return;
@@ -660,6 +671,9 @@ public class LruBlockCache implements FirstLevelBlockCache {
   }
 
   private void increaseEvictedBlockCount(Cacheable cb) {
+    if (!enableTableLevelCacheStats) {
+      return;
+    }
     byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
     if (tableNameBytes == null || tableNameBytes.length == 0) {
       return;
@@ -1046,6 +1060,11 @@ public class LruBlockCache implements FirstLevelBlockCache {
   }
 
   public void logStats() {
+    Map<String, Pair<Long, Long>> tableLevelCacheCounters = new HashMap<>();
+    for (Map.Entry<String, Pair<LongAdder, LongAdder>> entry : tableLevelCacheStats.entrySet()) {
+      tableLevelCacheCounters.put(entry.getKey(),
+        new Pair<>(entry.getValue().getFirst().sum(), entry.getValue().getSecond().sum()));
+    }
     // Log size
     long usedSize = heapSize();
     long freeSize = maxSize - usedSize;
@@ -1063,7 +1082,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
         ? "0,"
         : (StringUtils.formatPercent(stats.getHitCachingRatio(), 2) + ", "))
       + "evictions=" + stats.getEvictionCount() + ", " + "evicted=" + stats.getEvictedCount() + ", "
-      + "evictedPerRun=" + stats.evictedPerEviction() + ", table level block load,evict count=" + tableLevelCacheStats);
+      + "evictedPerRun=" + stats.evictedPerEviction() + ", table level block load,evict count=" + tableLevelCacheCounters);
   }
 
   /**

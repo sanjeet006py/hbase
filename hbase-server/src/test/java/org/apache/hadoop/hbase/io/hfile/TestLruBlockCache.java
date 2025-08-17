@@ -335,7 +335,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 16 * 1024 * 1024);
+        false, 16 * 1024 * 1024, false);
 
     CachedItem[] singleBlocks = generateFixedBlocks(5, blockSize, "single");
     CachedItem[] multiBlocks = generateFixedBlocks(5, blockSize, "multi");
@@ -454,7 +454,7 @@ public class TestLruBlockCache {
         0.3f, // multi
         0.5f, // memory
         1.2f, // limit
-        true, 16 * 1024 * 1024);
+        true, 16 * 1024 * 1024, false);
 
     CachedItem[] singleBlocks = generateFixedBlocks(10, blockSize, "single");
     CachedItem[] multiBlocks = generateFixedBlocks(10, blockSize, "multi");
@@ -558,7 +558,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 16 * 1024 * 1024);
+        false, 16 * 1024 * 1024, false);
 
     CachedItem[] singleBlocks = generateFixedBlocks(20, blockSize, "single");
     CachedItem[] multiBlocks = generateFixedBlocks(5, blockSize, "multi");
@@ -619,7 +619,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 1024);
+        false, 1024, false);
     CachedItem[] tooLong = generateFixedBlocks(10, 1024 + 5, "long");
     CachedItem[] small = generateFixedBlocks(15, 600, "small");
 
@@ -654,7 +654,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 16 * 1024 * 1024);
+        false, 16 * 1024 * 1024, false);
 
     CachedItem[] singleBlocks = generateFixedBlocks(10, blockSize, "single");
     CachedItem[] multiBlocks = generateFixedBlocks(10, blockSize, "multi");
@@ -812,7 +812,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 1024);
+        false, 1024, false);
 
     BlockCacheKey key = new BlockCacheKey("key1", 0);
     ByteBuffer actualBuffer = ByteBuffer.allocate(length);
@@ -997,7 +997,7 @@ public class TestLruBlockCache {
         0.33f, // multi
         0.34f, // memory
         1.2f, // limit
-        false, 1024);
+        false, 1024, false);
     testMultiThreadGetAndEvictBlockInternal(cache);
   }
 }

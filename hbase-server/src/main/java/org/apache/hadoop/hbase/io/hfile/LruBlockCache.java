@@ -467,6 +467,8 @@ public class LruBlockCache implements FirstLevelBlockCache {
     }
     byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
     if (tableNameBytes == null || tableNameBytes.length == 0) {
+      LOG.warn(
+        "tableNameBytes is null or empty, skipping table level cache stats for block addition");
       return;
     }
     String tableName = Bytes.toString(tableNameBytes);
@@ -676,6 +678,8 @@ public class LruBlockCache implements FirstLevelBlockCache {
     }
     byte[] tableNameBytes = ((HFileBlock) cb).getHFileContext().getTableName();
     if (tableNameBytes == null || tableNameBytes.length == 0) {
+      LOG.warn(
+        "tableNameBytes is null or empty, skipping table level cache stats for block eviction");
       return;
     }
     String tableName = Bytes.toString(tableNameBytes);

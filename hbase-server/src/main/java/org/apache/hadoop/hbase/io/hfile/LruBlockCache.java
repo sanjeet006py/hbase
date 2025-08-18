@@ -145,7 +145,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
 
   private static final boolean DEFAULT_IN_MEMORY_FORCE_MODE = false;
 
-  private static final String LRU_ENABLE_TABLE_LEVEL_CACHE_STATS =
+  public static final String LRU_ENABLE_TABLE_LEVEL_CACHE_STATS =
     "hbase.lru.blockcache.enable.table.level.cache.stats";
 
   /* Statistics thread */
@@ -981,7 +981,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
    * above the acceptable level.<p> Thread is triggered into action by {@link
    * LruBlockCache#runEviction()}
    */
-  static class EvictionThread extends Thread {
+  public static class EvictionThread extends Thread {
 
     private WeakReference<LruBlockCache> cache;
     private volatile boolean go = true;
@@ -1060,11 +1060,7 @@ public class LruBlockCache implements FirstLevelBlockCache {
   }
 
   public void logStats() {
-    Map<String, Pair<Long, Long>> tableLevelCacheCounters = new HashMap<>();
-    for (Map.Entry<String, Pair<LongAdder, LongAdder>> entry : tableLevelCacheStats.entrySet()) {
-      tableLevelCacheCounters.put(entry.getKey(),
-        new Pair<>(entry.getValue().getFirst().sum(), entry.getValue().getSecond().sum()));
-    }
+    Map<String, Pair<Long, Long>> tableLevelCacheCounters = getTableLevelCacheStats();
     // Log size
     long usedSize = heapSize();
     long freeSize = maxSize - usedSize;
@@ -1286,5 +1282,13 @@ public class LruBlockCache implements FirstLevelBlockCache {
       return new BlockCache[] { this, this.victimHandler };
     }
     return null;
+  }
+
+  public Map<String, Pair<Long, Long>> getTableLevelCacheStats() {
+    Map<String, Pair<Long, Long>> stats = new HashMap<>();
+    for (Map.Entry<String, Pair<LongAdder, LongAdder>> entry : tableLevelCacheStats.entrySet()) {
+      stats.put(entry.getKey(), new Pair<>(entry.getValue().getFirst().sum(), entry.getValue().getSecond().sum()));
+    }
+    return stats;
   }
 }

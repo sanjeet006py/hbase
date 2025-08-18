@@ -32,6 +32,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -57,9 +59,14 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.io.hfile.BlockCache;
+import org.apache.hadoop.hbase.io.hfile.BlockCacheFactory;
 import org.apache.hadoop.hbase.io.hfile.CorruptHFileException;
+import org.apache.hadoop.hbase.io.hfile.LruBlockCache;
 import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.HStore;
+import org.apache.hadoop.hbase.regionserver.HStoreFile;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.regionserver.wal.AbstractTestWALReplay;
@@ -75,6 +82,7 @@ import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.Pair;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -356,9 +364,19 @@ public class TestWALSplitToHFile {
     // split the log
     WALSplitter.split(rootDir, logDir, oldLogDir, FileSystem.get(this.conf), this.conf, wals);
 
+    this.conf.setBoolean(LruBlockCache.LRU_ENABLE_TABLE_LEVEL_CACHE_STATS, true);
     // reopen the region
     WAL wal2 = createWAL(this.conf, rootDir, logName);
-    HRegion region2 = HRegion.openHRegion(conf, this.fs, rootDir, ri, td, wal2);
+    Optional<BlockCache> blockCache = Optional.of(BlockCacheFactory.createBlockCache(this.conf));
+    RegionServerServices rsServices = Mockito.mock(RegionServerServices.class);
+    Mockito.doReturn(blockCache).when(rsServices).getBlockCache();
+    Mockito.doReturn(this.conf).when(rsServices).getConfiguration();
+    Mockito.doReturn(false).when(rsServices).isAborted();
+    Mockito.doReturn(ServerName.valueOf("foo", 10, 10)).when(rsServices).getServerName();
+    HRegion region2 = HRegion.openHRegion(conf, this.fs, rootDir, ri, td, wal2, rsServices, null);
+    LruBlockCache lruBlockCache = (LruBlockCache) blockCache.get();
+    Map<String, Pair<Long, Long>> stats = lruBlockCache.getTableLevelCacheStats();
+    Assert.assertTrue(stats.isEmpty());
     // assert the seqid was recovered
     for (int i = 0; i < countPerFamily; i++) {
       for (ColumnFamilyDescriptor cfd : td.getColumnFamilies()) {
@@ -369,6 +387,16 @@ public class TestWALSplitToHFile {
         assertEquals((long) seqIdMap.get(i).get(cfd.getNameAsString()), cells[0].getSequenceId());
       }
     }
+    stats = lruBlockCache.getTableLevelCacheStats();
+    Assert.assertEquals(new Pair<>(3L, 0L), stats.get(td.getTableName().getNameAsString()));
+    for (HStore store : region2.getStores()) {
+      for (HStoreFile hsf : store.getStorefiles()) {
+        String hfileName = hsf.getPath().getName();
+        lruBlockCache.evictBlocksByHfileName(hfileName);
+      }
+    }
+    stats = lruBlockCache.getTableLevelCacheStats();
+    Assert.assertEquals(new Pair<>(3L, 3L), stats.get(td.getTableName().getNameAsString()));
   }
 
   /**

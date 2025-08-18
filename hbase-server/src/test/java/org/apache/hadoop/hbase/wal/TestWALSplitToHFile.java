@@ -343,7 +343,13 @@ public class TestWALSplitToHFile {
     RegionInfo ri = pair.getSecond();
 
     WAL wal = createWAL(this.conf, rootDir, logName);
-    HRegion region = HRegion.openHRegion(this.conf, this.fs, rootDir, ri, td, wal);
+    Optional<BlockCache> blockCache = Optional.of(BlockCacheFactory.createBlockCache(this.conf));
+    RegionServerServices rsServices = Mockito.mock(RegionServerServices.class);
+    Mockito.doReturn(blockCache).when(rsServices).getBlockCache();
+    Mockito.doReturn(this.conf).when(rsServices).getConfiguration();
+    Mockito.doReturn(false).when(rsServices).isAborted();
+    Mockito.doReturn(ServerName.valueOf("foo", 10, 10)).when(rsServices).getServerName();
+    HRegion region = HRegion.openHRegion(this.conf, this.fs, rootDir, ri, td, wal, rsServices, null);
     Map<Integer, Map<String, Long>> seqIdMap = new HashMap<>();
     // Write data and do not flush
     for (int i = 0; i < countPerFamily; i++) {
@@ -357,24 +363,27 @@ public class TestWALSplitToHFile {
           cells[0].getSequenceId());
       }
     }
+    LruBlockCache lruBlockCache = (LruBlockCache) blockCache.get();
+    Assert.assertTrue(lruBlockCache.getTableLevelCacheStats().isEmpty());
 
     // Now close the region without flush
     region.close(true);
     wal.shutdown();
+    blockCache.get().shutdown();
     // split the log
     WALSplitter.split(rootDir, logDir, oldLogDir, FileSystem.get(this.conf), this.conf, wals);
 
     this.conf.setBoolean(LruBlockCache.LRU_ENABLE_TABLE_LEVEL_CACHE_STATS, true);
     // reopen the region
     WAL wal2 = createWAL(this.conf, rootDir, logName);
-    Optional<BlockCache> blockCache = Optional.of(BlockCacheFactory.createBlockCache(this.conf));
-    RegionServerServices rsServices = Mockito.mock(RegionServerServices.class);
+    blockCache = Optional.of(BlockCacheFactory.createBlockCache(this.conf));
+    rsServices = Mockito.mock(RegionServerServices.class);
     Mockito.doReturn(blockCache).when(rsServices).getBlockCache();
     Mockito.doReturn(this.conf).when(rsServices).getConfiguration();
     Mockito.doReturn(false).when(rsServices).isAborted();
     Mockito.doReturn(ServerName.valueOf("foo", 10, 10)).when(rsServices).getServerName();
+    lruBlockCache = (LruBlockCache) blockCache.get();
     HRegion region2 = HRegion.openHRegion(conf, this.fs, rootDir, ri, td, wal2, rsServices, null);
-    LruBlockCache lruBlockCache = (LruBlockCache) blockCache.get();
     Map<String, Pair<Long, Long>> stats = lruBlockCache.getTableLevelCacheStats();
     Assert.assertTrue(stats.isEmpty());
     // assert the seqid was recovered

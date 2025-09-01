@@ -1,4 +1,4 @@
-- source_branch: 2.5.10-sfdc-13
-  targets:  
+- source_branch: hadoop-3.3-release-13.17
+  targets:
   - target_branch: 2.5.10-sfdc-13
-    auto_merge: false
+    auto_merge: true

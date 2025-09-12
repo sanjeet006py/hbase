@@ -34,7 +34,8 @@ module Shell
         @max_width = 0
         if $stdout.tty?
           begin
-            @max_width = Java.jline.TerminalFactory.get.getWidth
+            terminal = Java.org.jline.terminal.TerminalBuilder.builder().build()
+            @max_width = terminal.getSize().getColumns()
           rescue NameError => e
             # nocommit debug log and ignore
           end

@@ -566,7 +566,7 @@
     <mockito.version>4.11.0</mockito.version>
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.14.1</thrift.version>
-    <jline.version>2.11</jline.version>
+    <jline.version>3.30.4</jline.version>
     <clover.version>4.0.3</clover.version>
     <jamon-runtime.version>2.4.1</jamon-runtime.version>
     <jettison.version>1.5.4</jettison.version>
@@ -1213,7 +1213,7 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>jline</groupId>
+        <groupId>org.jline</groupId>
         <artifactId>jline</artifactId>
         <version>${jline.version}</version>
       </dependency>

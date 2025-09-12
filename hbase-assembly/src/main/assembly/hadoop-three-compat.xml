@@ -98,7 +98,7 @@
             <!-- SFDC change  <exclude>org.jruby:jruby-complete</exclude> -->
               <exclude>com.sun.jersey:*</exclude>
               <exclude>com.sun.jersey.contribs:*</exclude>
-              <exclude>jline:jline</exclude>
+              <exclude>org.jline:jline</exclude>
               <exclude>org.apache.hbase:hbase-shaded-client</exclude>
               <exclude>org.apache.hbase:hbase-shaded-client-byo-hadoop</exclude>
               <exclude>org.apache.hbase:hbase-shaded-mapreduce</exclude>
@@ -202,7 +202,7 @@
     <dependencySet>
       <outputDirectory>lib/zkcli</outputDirectory>
       <includes>
-        <include>jline:jline</include>
+        <include>org.jline:jline</include>
       </includes>
     </dependencySet>
     <dependencySet>

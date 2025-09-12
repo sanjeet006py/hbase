@@ -51,7 +51,7 @@
             <!-- SFDC change  <exclude>org.jruby:jruby-complete</exclude> -->
               <exclude>com.sun.jersey:*</exclude>
               <exclude>com.sun.jersey.contribs:*</exclude>
-              <exclude>jline:jline</exclude>
+              <exclude>org.jline:jline</exclude>
               <exclude>junit:junit</exclude>
               <exclude>com.github.stephenc.findbugs:findbugs-annotations</exclude>
               <exclude>commons-logging:commons-logging</exclude>

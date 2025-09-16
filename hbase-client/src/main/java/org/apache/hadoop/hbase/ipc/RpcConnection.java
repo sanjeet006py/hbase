@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.MetricsConnection;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.net.Address;
-import org.apache.hadoop.hbase.security.AuthMethod;
 import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.provider.SaslClientAuthenticationProvider;
@@ -194,15 +193,6 @@ abstract class RpcConnection {
       throw new UnknownHostException(remoteId.getAddress() + " could not be resolved");
     }
     return remoteAddr;
-  }
-
-  protected final boolean isKerberosAuth() {
-    return provider.getSaslAuthMethod().getCode() == AuthMethod.KERBEROS.code;
-  }
-
-  protected final void saslNegotiationDone(boolean succeed) {
-    LOG.debug("sasl negotiation done with serverPrincipal = {}, succeed = {}",
-      securityInfo.getServerPrincipal(), succeed);
   }
 
   protected abstract void callTimeout(Call call);

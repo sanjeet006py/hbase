@@ -49,7 +49,7 @@ public class TestBlockingIPC extends AbstractTestIPC {
   protected BlockingRpcClient createRpcClientNoCodec(Configuration conf) {
     return new BlockingRpcClient(conf) {
       @Override
-      protected Codec getCodec() {
+      Codec getCodec() {
         return null;
       }
     };
@@ -66,7 +66,7 @@ public class TestBlockingIPC extends AbstractTestIPC {
     return new BlockingRpcClient(conf) {
 
       @Override
-      protected boolean isTcpNoDelay() {
+      boolean isTcpNoDelay() {
         throw new RuntimeException("Injected fault");
       }
     };

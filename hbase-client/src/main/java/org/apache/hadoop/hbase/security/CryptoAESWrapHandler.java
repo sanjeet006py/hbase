@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hbase.security;
 
-import javax.security.sasl.SaslClient;
+import org.apache.hadoop.hbase.io.crypto.aes.CryptoAES;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
@@ -25,22 +25,22 @@ import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
 import org.apache.hbase.thirdparty.io.netty.handler.codec.MessageToByteEncoder;
 
 /**
- * wrap sasl messages.
+ * wrap messages with Crypto AES.
  */
 @InterfaceAudience.Private
-public class SaslWrapHandler extends MessageToByteEncoder<ByteBuf> {
+public class CryptoAESWrapHandler extends MessageToByteEncoder<ByteBuf> {
 
-  private final SaslClient saslClient;
+  private final CryptoAES cryptoAES;
 
-  public SaslWrapHandler(SaslClient saslClient) {
-    this.saslClient = saslClient;
+  public CryptoAESWrapHandler(CryptoAES cryptoAES) {
+    this.cryptoAES = cryptoAES;
   }
 
   @Override
   protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
     byte[] bytes = new byte[msg.readableBytes()];
     msg.readBytes(bytes);
-    byte[] wrapperBytes = saslClient.wrap(bytes, 0, bytes.length);
+    byte[] wrapperBytes = cryptoAES.wrap(bytes, 0, bytes.length);
     out.ensureWritable(4 + wrapperBytes.length);
     out.writeInt(wrapperBytes.length);
     out.writeBytes(wrapperBytes);

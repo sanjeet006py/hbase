@@ -17,27 +17,15 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.DEFAULT_HBASE_SERVER_NETTY_TLS_WRAP_SIZE;
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_ENABLED;
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_SUFFICIENT;
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT;
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.HBASE_SERVER_NETTY_TLS_WRAP_SIZE;
-import static org.apache.hadoop.hbase.io.crypto.tls.X509Util.TLS_CONFIG_REVERSE_DNS_LOOKUP_ENABLED;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.Server;
-import org.apache.hadoop.hbase.exceptions.X509Exception;
-import org.apache.hadoop.hbase.io.FileChangeWatcher;
-import org.apache.hadoop.hbase.io.crypto.tls.X509Util;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.security.HBasePolicyProvider;
@@ -65,9 +53,7 @@ import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
 import org.apache.hbase.thirdparty.io.netty.channel.ServerChannel;
 import org.apache.hbase.thirdparty.io.netty.channel.group.ChannelGroup;
 import org.apache.hbase.thirdparty.io.netty.channel.group.DefaultChannelGroup;
-import org.apache.hbase.thirdparty.io.netty.handler.ssl.OptionalSslHandler;
-import org.apache.hbase.thirdparty.io.netty.handler.ssl.SslContext;
-import org.apache.hbase.thirdparty.io.netty.handler.ssl.SslHandler;
+import org.apache.hbase.thirdparty.io.netty.handler.codec.FixedLengthFrameDecoder;
 import org.apache.hbase.thirdparty.io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
@@ -99,9 +85,6 @@ public class NettyRpcServer extends RpcServer {
   private final Channel serverChannel;
   final ChannelGroup allChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE, true);
   private final ByteBufAllocator channelAllocator;
-  private final AtomicReference<SslContext> sslContextForServer = new AtomicReference<>();
-  private final AtomicReference<FileChangeWatcher> keyStoreWatcher = new AtomicReference<>();
-  private final AtomicReference<FileChangeWatcher> trustStoreWatcher = new AtomicReference<>();
 
   public NettyRpcServer(Server server, String name, List<BlockingServiceAndInterface> services,
     InetSocketAddress bindAddress, Configuration conf, RpcScheduler scheduler,
@@ -128,20 +111,13 @@ public class NettyRpcServer extends RpcServer {
         protected void initChannel(Channel ch) throws Exception {
           ch.config().setAllocator(channelAllocator);
           ChannelPipeline pipeline = ch.pipeline();
-
-          NettyServerRpcConnection conn = createNettyServerRpcConnection(ch);
-
-          if (conf.getBoolean(HBASE_SERVER_NETTY_TLS_ENABLED, false)) {
-            initSSL(pipeline, conn, conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUPPORTPLAINTEXT, true),
-              conf.getBoolean(HBASE_SERVER_NETTY_TLS_SUFFICIENT, false));
-          }
-          pipeline
-            .addLast(NettyRpcServerPreambleHandler.DECODER_NAME,
-              NettyRpcServerPreambleHandler.createDecoder())
-            .addLast(new NettyRpcServerPreambleHandler(NettyRpcServer.this, conn))
-            // We need NettyRpcServerResponseEncoder here because NettyRpcServerPreambleHandler may
-            // send RpcResponse to client.
-            .addLast(NettyRpcServerResponseEncoder.NAME, new NettyRpcServerResponseEncoder(metrics));
+          FixedLengthFrameDecoder preambleDecoder = new FixedLengthFrameDecoder(6);
+          preambleDecoder.setSingleDecode(true);
+          pipeline.addLast("preambleDecoder", preambleDecoder);
+          pipeline.addLast("preambleHandler", createNettyRpcServerPreambleHandler());
+          pipeline.addLast("frameDecoder", new NettyRpcFrameDecoder(maxRequestSize));
+          pipeline.addLast("decoder", new NettyRpcServerRequestDecoder(allChannels, metrics));
+          pipeline.addLast("encoder", new NettyRpcServerResponseEncoder(metrics));
         }
       });
     try {
@@ -184,10 +160,9 @@ public class NettyRpcServer extends RpcServer {
     }
   }
 
-  // will be overridden in tests
   @InterfaceAudience.Private
-  protected NettyServerRpcConnection createNettyServerRpcConnection(Channel channel) {
-    return new NettyServerRpcConnection(NettyRpcServer.this, channel);
+  protected NettyRpcServerPreambleHandler createNettyRpcServerPreambleHandler() {
+    return new NettyRpcServerPreambleHandler(NettyRpcServer.this);
   }
 
   @Override
@@ -216,14 +191,6 @@ public class NettyRpcServer extends RpcServer {
       return;
     }
     LOG.info("Stopping server on " + this.serverChannel.localAddress());
-    FileChangeWatcher ks = keyStoreWatcher.getAndSet(null);
-    if (ks != null) {
-      ks.stop();
-    }
-    FileChangeWatcher ts = trustStoreWatcher.getAndSet(null);
-    if (ts != null) {
-      ts.stop();
-    }
     if (authTokenSecretMgr != null) {
       authTokenSecretMgr.stop();
       authTokenSecretMgr = null;
@@ -269,83 +236,5 @@ public class NettyRpcServer extends RpcServer {
     NettyServerCall fakeCall = new NettyServerCall(-1, service, md, null, param, cellScanner, null,
       -1, null, receiveTime, timeout, bbAllocator, cellBlockBuilder, null);
     return call(fakeCall, status);
-  }
-
-  private void initSSL(ChannelPipeline p, NettyServerRpcConnection conn, boolean supportPlaintext,
-    boolean isSufficient) throws X509Exception, IOException {
-    SslContext nettySslContext = getSslContext();
-
-    if (supportPlaintext) {
-      p.addLast("ssl", new OptionalSslHandler(nettySslContext));
-      LOG.debug("Dual mode SSL handler added for channel: {}", p.channel());
-    } else {
-      SocketAddress remoteAddress = p.channel().remoteAddress();
-      SslHandler sslHandler;
-
-      if (remoteAddress instanceof InetSocketAddress) {
-        InetSocketAddress remoteInetAddress = (InetSocketAddress) remoteAddress;
-        String host;
-
-        if (conf.getBoolean(TLS_CONFIG_REVERSE_DNS_LOOKUP_ENABLED, true)) {
-          host = remoteInetAddress.getHostName();
-        } else {
-          host = remoteInetAddress.getHostString();
-        }
-
-        int port = remoteInetAddress.getPort();
-
-        /*
-         * our HostnameVerifier gets the host name from SSLEngine, so we have to construct the
-         * engine properly by passing the remote address
-         */
-        sslHandler = nettySslContext.newHandler(p.channel().alloc(), host, port);
-      } else {
-        sslHandler = nettySslContext.newHandler(p.channel().alloc());
-      }
-
-      sslHandler.setWrapDataSize(
-        conf.getInt(HBASE_SERVER_NETTY_TLS_WRAP_SIZE, DEFAULT_HBASE_SERVER_NETTY_TLS_WRAP_SIZE));
-
-      sslHandler.handshakeFuture().addListener(future -> sslHandshakeCompleteHandler(conn,
-        sslHandler, future.isSuccess(), remoteAddress, isSufficient));
-
-      p.addLast("ssl", sslHandler);
-      LOG.debug("SSL handler added for channel: {}", p.channel());
-    }
-  }
-
-  static void sslHandshakeCompleteHandler(NettyServerRpcConnection conn, SslHandler sslHandler,
-    boolean isSuccess, SocketAddress remoteAddress, boolean isSufficient) {
-    if (isSuccess) {
-      if (isSufficient) {
-        // If TLS will be sufficient, we will force the connection to use simple auth
-        conn.authenticateWithFallback = true;
-        RpcServer.AUDITLOG.info(
-          RpcServer.AUTH_SUCCESSFUL_FOR + "TLS connection from " + remoteAddress + "; sufficient");
-      } else {
-        RpcServer.AUDITLOG
-          .info(RpcServer.AUTH_SUCCESSFUL_FOR + "TLS connection from " + remoteAddress);
-      }
-    } else {
-      RpcServer.AUDITLOG.info(RpcServer.AUTH_FAILED_FOR + "TLS connection from " + remoteAddress);
-    }
-  }
-
-  SslContext getSslContext() throws X509Exception, IOException {
-    SslContext result = sslContextForServer.get();
-    if (result == null) {
-      result = X509Util.createSslContextForServer(conf);
-      if (!sslContextForServer.compareAndSet(null, result)) {
-        // lost the race, another thread already set the value
-        result = sslContextForServer.get();
-      } else if (
-        keyStoreWatcher.get() == null && trustStoreWatcher.get() == null
-          && conf.getBoolean(X509Util.TLS_CERT_RELOAD, false)
-      ) {
-        X509Util.enableCertFileReloading(conf, keyStoreWatcher, trustStoreWatcher,
-          () -> sslContextForServer.set(null));
-      }
-    }
-    return result;
   }
 }

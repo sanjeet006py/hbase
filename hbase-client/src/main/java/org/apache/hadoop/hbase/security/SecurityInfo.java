@@ -22,10 +22,9 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.AuthenticationProtos.TokenIdentifier.Kind;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AuthenticationProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegistryProtos;
 
@@ -39,17 +38,23 @@ public class SecurityInfo {
   // populate info for known services
   static {
     infos.put(AdminProtos.AdminService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
     infos.put(ClientProtos.ClientService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
-    infos.put(MasterService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.REGIONSERVER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
+    infos.put(MasterProtos.MasterService.getDescriptor().getName(),
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
     infos.put(RegionServerStatusProtos.RegionServerStatusService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
     infos.put(MasterProtos.HbckService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
     infos.put(RegistryProtos.ClientMetaService.getDescriptor().getName(),
-      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL, Kind.HBASE_AUTH_TOKEN));
+      new SecurityInfo(SecurityConstants.MASTER_KRB_PRINCIPAL,
+        AuthenticationProtos.TokenIdentifier.Kind.HBASE_AUTH_TOKEN));
     // NOTE: IF ADDING A NEW SERVICE, BE SURE TO UPDATE HBasePolicyProvider ALSO ELSE
     // new Service will not be found when all is Kerberized!!!!
   }
@@ -70,9 +75,9 @@ public class SecurityInfo {
   }
 
   private final String serverPrincipal;
-  private final Kind tokenKind;
+  private final AuthenticationProtos.TokenIdentifier.Kind tokenKind;
 
-  public SecurityInfo(String serverPrincipal, Kind tokenKind) {
+  public SecurityInfo(String serverPrincipal, AuthenticationProtos.TokenIdentifier.Kind tokenKind) {
     this.serverPrincipal = serverPrincipal;
     this.tokenKind = tokenKind;
   }
@@ -81,7 +86,7 @@ public class SecurityInfo {
     return serverPrincipal;
   }
 
-  public Kind getTokenKind() {
+  public AuthenticationProtos.TokenIdentifier.Kind getTokenKind() {
     return tokenKind;
   }
 }

@@ -26,6 +26,7 @@ import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
 import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
 import org.apache.hbase.thirdparty.io.netty.channel.ChannelPipeline;
 import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import org.apache.hbase.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.hbase.thirdparty.io.netty.util.concurrent.Promise;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
@@ -91,7 +92,10 @@ public class NettyHBaseRpcConnectionHeaderHandler extends SimpleChannelInboundHa
    * Remove handlers for sasl encryption and add handlers for Crypto AES encryption
    */
   private void setupCryptoAESHandler(ChannelPipeline p, CryptoAES cryptoAES) {
-    p.replace(SaslWrapHandler.class, null, new SaslWrapHandler(cryptoAES::wrap));
-    p.replace(SaslUnwrapHandler.class, null, new SaslUnwrapHandler(cryptoAES::unwrap));
+    p.remove(SaslWrapHandler.class);
+    p.remove(SaslUnwrapHandler.class);
+    String lengthDecoder = p.context(LengthFieldBasedFrameDecoder.class).name();
+    p.addAfter(lengthDecoder, null, new CryptoAESUnwrapHandler(cryptoAES));
+    p.addAfter(lengthDecoder, null, new CryptoAESWrapHandler(cryptoAES));
   }
 }

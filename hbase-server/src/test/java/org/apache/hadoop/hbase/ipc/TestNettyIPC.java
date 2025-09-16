@@ -115,7 +115,7 @@ public class TestNettyIPC extends AbstractTestIPC {
     return new NettyRpcClient(conf) {
 
       @Override
-      protected Codec getCodec() {
+      Codec getCodec() {
         return null;
       }
 
@@ -134,13 +134,12 @@ public class TestNettyIPC extends AbstractTestIPC {
     return new NettyRpcClient(conf) {
 
       @Override
-      protected boolean isTcpNoDelay() {
+      boolean isTcpNoDelay() {
         throw new RuntimeException("Injected fault");
       }
     };
   }
 
-  @Override
   protected AbstractRpcClient<?> createBadAuthRpcClient(Configuration conf) {
     return new NettyRpcClient(conf) {
 

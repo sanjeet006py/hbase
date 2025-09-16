@@ -69,7 +69,7 @@ public class IntegrationTestRpcClient {
   protected AbstractRpcClient<?> createRpcClient(Configuration conf, boolean isSyncClient) {
     return isSyncClient ? new BlockingRpcClient(conf) : new NettyRpcClient(conf) {
       @Override
-      protected Codec getCodec() {
+      Codec getCodec() {
         return null;
       }
     };

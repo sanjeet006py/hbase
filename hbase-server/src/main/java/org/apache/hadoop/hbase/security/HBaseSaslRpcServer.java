@@ -24,7 +24,6 @@ import java.util.Map;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
-import org.apache.hadoop.hbase.io.crypto.aes.CryptoAES;
 import org.apache.hadoop.hbase.security.provider.AttemptingUserProvidingSaslServer;
 import org.apache.hadoop.hbase.security.provider.SaslServerAuthenticationProvider;
 import org.apache.hadoop.security.token.SecretManager;
@@ -41,7 +40,6 @@ public class HBaseSaslRpcServer {
 
   private final AttemptingUserProvidingSaslServer serverWithProvider;
   private final SaslServer saslServer;
-  private CryptoAES cryptoAES;
 
   public HBaseSaslRpcServer(SaslServerAuthenticationProvider provider,
     Map<String, String> saslProps, SecretManager<TokenIdentifier> secretManager)
@@ -63,28 +61,16 @@ public class HBaseSaslRpcServer {
     SaslUtil.safeDispose(saslServer);
   }
 
-  public void switchToCryptoAES(CryptoAES cryptoAES) {
-    this.cryptoAES = cryptoAES;
-  }
-
   public String getAttemptingUser() {
     return serverWithProvider.getAttemptingUser().map(Object::toString).orElse("Unknown");
   }
 
   public byte[] wrap(byte[] buf, int off, int len) throws SaslException {
-    if (cryptoAES != null) {
-      return cryptoAES.wrap(buf, off, len);
-    } else {
-      return saslServer.wrap(buf, off, len);
-    }
+    return saslServer.wrap(buf, off, len);
   }
 
   public byte[] unwrap(byte[] buf, int off, int len) throws SaslException {
-    if (cryptoAES != null) {
-      return cryptoAES.unwrap(buf, off, len);
-    } else {
-      return saslServer.unwrap(buf, off, len);
-    }
+    return saslServer.unwrap(buf, off, len);
   }
 
   public String getNegotiatedQop() {
@@ -105,19 +91,5 @@ public class HBaseSaslRpcServer {
       throw (InvalidToken) new InvalidToken("Can't de-serialize tokenIdentifier").initCause(e);
     }
     return tokenIdentifier;
-  }
-
-  /**
-   * Unwrap InvalidToken exception, otherwise return the one passed in.
-   */
-  public static Throwable unwrap(Throwable e) {
-    Throwable cause = e;
-    while (cause != null) {
-      if (cause instanceof InvalidToken) {
-        return cause;
-      }
-      cause = cause.getCause();
-    }
-    return e;
   }
 }

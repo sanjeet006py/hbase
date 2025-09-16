@@ -17,42 +17,64 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.util.NettyFutureUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
 import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import org.apache.hbase.thirdparty.io.netty.channel.ChannelInboundHandlerAdapter;
+import org.apache.hbase.thirdparty.io.netty.channel.group.ChannelGroup;
 
 /**
  * Decoder for rpc request.
  * @since 2.0.0
  */
 @InterfaceAudience.Private
-class NettyRpcServerRequestDecoder extends SimpleChannelInboundHandler<ByteBuf> {
+class NettyRpcServerRequestDecoder extends ChannelInboundHandlerAdapter {
+
+  private final ChannelGroup allChannels;
 
   private final MetricsHBaseServer metrics;
 
-  private final NettyServerRpcConnection connection;
-
-  public NettyRpcServerRequestDecoder(MetricsHBaseServer metrics,
-    NettyServerRpcConnection connection) {
-    super(false);
+  public NettyRpcServerRequestDecoder(ChannelGroup allChannels, MetricsHBaseServer metrics) {
+    this.allChannels = allChannels;
     this.metrics = metrics;
+  }
+
+  private NettyServerRpcConnection connection;
+
+  void setConnection(NettyServerRpcConnection connection) {
     this.connection = connection;
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) {
-    NettyRpcServer.LOG.warn("Connection {}; caught unexpected downstream exception.",
-      ctx.channel().remoteAddress(), e);
-    NettyFutureUtils.safeClose(ctx);
+  public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    allChannels.add(ctx.channel());
+    NettyRpcServer.LOG.trace("Connection {}; # active connections={}",
+      ctx.channel().remoteAddress(), (allChannels.size() - 1));
+    super.channelActive(ctx);
   }
 
   @Override
-  protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    ByteBuf input = (ByteBuf) msg;
     // 4 bytes length field
-    metrics.receivedBytes(msg.readableBytes() + 4);
-    connection.process(msg);
+    metrics.receivedBytes(input.readableBytes() + 4);
+    connection.process(input);
+  }
+
+  @Override
+  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    allChannels.remove(ctx.channel());
+    NettyRpcServer.LOG.trace("Disconnection {}; # active connections={}",
+      ctx.channel().remoteAddress(), (allChannels.size() - 1));
+    super.channelInactive(ctx);
+  }
+
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) {
+    allChannels.remove(ctx.channel());
+    NettyRpcServer.LOG.trace("Connection {}; caught unexpected downstream exception.",
+      ctx.channel().remoteAddress(), e);
+    ctx.channel().close();
   }
 }

@@ -41,6 +41,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.security.sasl.SaslException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellScanner;
@@ -98,6 +99,9 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
   // Used for ensuring two reader threads don't run over each other. Should only be used
   // in reader thread run() method, to avoid deadlocks with synchronization on BlockingRpcConnection
   private final Object readerThreadLock = new Object();
+
+  // Used to suffix the threadName in a way that we can differentiate them in logs/thread dumps.
+  private final AtomicInteger attempts = new AtomicInteger();
 
   // connected socket. protected for writing UT.
   protected Socket socket = null;
@@ -469,18 +473,13 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
           Thread.sleep(ThreadLocalRandom.current().nextInt(reloginMaxBackoff) + 1);
           return null;
         } else {
-          String msg = "Failed to initiate connection for "
-            + UserGroupInformation.getLoginUser().getUserName() + " to "
-            + securityInfo.getServerPrincipal();
+          String msg =
+            "Failed to initiate connection for " + UserGroupInformation.getLoginUser().getUserName()
+              + " to " + securityInfo.getServerPrincipal();
           throw new IOException(msg, ex);
         }
       }
     });
-  }
-
-  private void createStreams(InputStream inStream, OutputStream outStream) {
-    this.in = new DataInputStream(new BufferedInputStream(inStream));
-    this.out = new DataOutputStream(new BufferedOutputStream(outStream));
   }
 
   private void setupIOstreams() throws IOException {
@@ -510,18 +509,17 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
         InputStream inStream = NetUtils.getInputStream(socket);
         // This creates a socket with a write timeout. This timeout cannot be changed.
         OutputStream outStream = NetUtils.getOutputStream(socket, this.rpcClient.writeTO);
-
+        // Write out the preamble -- MAGIC, version, and auth to use.
+        writeConnectionHeaderPreamble(outStream);
         if (useSasl) {
+          final InputStream in2 = inStream;
+          final OutputStream out2 = outStream;
           UserGroupInformation ticket = provider.getRealUser(remoteId.ticket);
           boolean continueSasl;
           if (ticket == null) {
             throw new FatalConnectionException("ticket/user is null");
           }
-          // Write out the preamble -- MAGIC, version, and auth to use.
-          writeConnectionHeaderPreamble(outStream);
           try {
-            final InputStream in2 = inStream;
-            final OutputStream out2 = outStream;
             continueSasl = ticket.doAs(new PrivilegedExceptionAction<Boolean>() {
               @Override
               public Boolean run() throws IOException {
@@ -530,11 +528,9 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
             });
           } catch (Exception ex) {
             ExceptionUtil.rethrowIfInterrupt(ex);
-            saslNegotiationDone(false);
             handleSaslConnectionFailure(numRetries++, reloginMaxRetries, ex, ticket);
             continue;
           }
-          saslNegotiationDone(true);
           if (continueSasl) {
             // Sasl connect is successful. Let's set up Sasl i/o streams.
             inStream = saslRpcClient.getInputStream();
@@ -545,15 +541,14 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
             // reconnecting because regionserver may change its sasl config after restart.
             saslRpcClient = null;
           }
-        } else {
-          // Write out the preamble -- MAGIC, version, and auth to use.
-          writeConnectionHeaderPreamble(outStream);
         }
-        createStreams(inStream, outStream);
+        this.in = new DataInputStream(new BufferedInputStream(inStream));
+        this.out = new DataOutputStream(new BufferedOutputStream(outStream));
         // Now write out the connection header
         writeConnectionHeader();
         // process the response from server for connection header if necessary
         processResponseForConnectionHeader();
+
         break;
       }
     } catch (Throwable t) {
@@ -574,7 +569,7 @@ class BlockingRpcConnection extends RpcConnection implements Runnable {
     }
 
     // start the receiver thread after the socket connection has been set up
-    thread = new Thread(this, threadName);
+    thread = new Thread(this, threadName + " (attempt: " + attempts.incrementAndGet() + ")");
     thread.setDaemon(true);
     thread.start();
   }

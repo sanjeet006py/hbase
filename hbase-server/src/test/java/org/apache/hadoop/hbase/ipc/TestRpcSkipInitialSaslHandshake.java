@@ -21,15 +21,15 @@ import static org.apache.hadoop.hbase.ipc.TestProtobufRpcServiceImpl.SERVICE;
 import static org.apache.hadoop.hbase.ipc.TestProtobufRpcServiceImpl.newBlockingStub;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getKeytabFileForTesting;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getPrincipalForTesting;
-import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.loginKerberosPrincipal;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.setSecuredConfiguration;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
@@ -49,7 +49,9 @@ import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
 import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
 import org.apache.hbase.thirdparty.io.netty.channel.Channel;
+import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
 
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestProtos;
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface;
@@ -118,6 +120,15 @@ public class TestRpcSkipInitialSaslHandshake {
     setUpPrincipalAndConf();
   }
 
+  private UserGroupInformation loginKerberosPrincipal(String krbKeytab, String krbPrincipal)
+    throws Exception {
+    Configuration cnf = new Configuration();
+    cnf.set(CommonConfigurationKeys.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+    UserGroupInformation.setConfiguration(cnf);
+    UserGroupInformation.loginUserFromKeytab(krbPrincipal, krbKeytab);
+    return UserGroupInformation.getLoginUser();
+  }
+
   /**
    * This test is for HBASE-27923,which NettyRpcServer may hange if it should skip initial sasl
    * handshake.
@@ -129,15 +140,29 @@ public class TestRpcSkipInitialSaslHandshake {
       .thenReturn(HBaseKerberosUtils.KRB_PRINCIPAL);
     SecurityInfo.addInfo("TestProtobufRpcProto", securityInfoMock);
 
-    final AtomicReference<NettyServerRpcConnection> conn = new AtomicReference<>(null);
+    final AtomicBoolean useSaslRef = new AtomicBoolean(false);
     NettyRpcServer rpcServer = new NettyRpcServer(null, getClass().getSimpleName(),
       Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(SERVICE, null)),
       new InetSocketAddress(HOST, 0), serverConf, new FifoRpcScheduler(serverConf, 1), true) {
 
       @Override
-      protected NettyServerRpcConnection createNettyServerRpcConnection(Channel channel) {
-        conn.set(super.createNettyServerRpcConnection(channel));
-        return conn.get();
+      protected NettyRpcServerPreambleHandler createNettyRpcServerPreambleHandler() {
+        return new NettyRpcServerPreambleHandler(this) {
+          private NettyServerRpcConnection conn;
+
+          @Override
+          protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+            super.channelRead0(ctx, msg);
+            useSaslRef.set(conn.useSasl);
+
+          }
+
+          @Override
+          protected NettyServerRpcConnection createNettyServerRpcConnection(Channel channel) {
+            conn = super.createNettyServerRpcConnection(channel);
+            return conn;
+          }
+        };
       }
     };
 
@@ -151,7 +176,8 @@ public class TestRpcSkipInitialSaslHandshake {
         stub.echo(null, TestProtos.EchoRequestProto.newBuilder().setMessage("test").build())
           .getMessage();
       assertTrue("test".equals(response));
-      assertFalse(conn.get().useSasl);
+      assertFalse(useSaslRef.get());
+
     } finally {
       rpcServer.stop();
     }

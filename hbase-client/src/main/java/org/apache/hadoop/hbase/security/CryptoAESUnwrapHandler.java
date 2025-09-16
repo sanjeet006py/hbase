@@ -17,32 +17,31 @@
  */
 package org.apache.hadoop.hbase.security;
 
-import javax.security.sasl.SaslClient;
+import org.apache.hadoop.hbase.io.crypto.aes.CryptoAES;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
+import org.apache.hbase.thirdparty.io.netty.buffer.Unpooled;
 import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.MessageToByteEncoder;
+import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
 
 /**
- * wrap sasl messages.
+ * Unwrap messages with Crypto AES. Should be placed after a
+ * io.netty.handler.codec.LengthFieldBasedFrameDecoder
  */
 @InterfaceAudience.Private
-public class SaslWrapHandler extends MessageToByteEncoder<ByteBuf> {
+public class CryptoAESUnwrapHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
-  private final SaslClient saslClient;
+  private final CryptoAES cryptoAES;
 
-  public SaslWrapHandler(SaslClient saslClient) {
-    this.saslClient = saslClient;
+  public CryptoAESUnwrapHandler(CryptoAES cryptoAES) {
+    this.cryptoAES = cryptoAES;
   }
 
   @Override
-  protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
+  protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
     byte[] bytes = new byte[msg.readableBytes()];
     msg.readBytes(bytes);
-    byte[] wrapperBytes = saslClient.wrap(bytes, 0, bytes.length);
-    out.ensureWritable(4 + wrapperBytes.length);
-    out.writeInt(wrapperBytes.length);
-    out.writeBytes(wrapperBytes);
+    ctx.fireChannelRead(Unpooled.wrappedBuffer(cryptoAES.unwrap(bytes, 0, bytes.length)));
   }
 }

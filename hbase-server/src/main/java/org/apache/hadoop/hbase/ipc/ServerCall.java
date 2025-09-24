@@ -102,7 +102,6 @@ public abstract class ServerCall<T extends ServerRpcConnection> implements RpcCa
 
   private long responseCellSize = 0;
   private long responseBlockSize = 0;
-  private long fsReadTimeMillis = 0;
   // cumulative size of serialized exceptions
   private long exceptionSize = 0;
   private final boolean retryImmediatelySupported;
@@ -613,11 +612,10 @@ public abstract class ServerCall<T extends ServerRpcConnection> implements RpcCa
 
   @Override
   public void updateFsReadTime(long latencyMillis) {
-    fsReadTimeMillis += latencyMillis;
   }
 
   @Override
   public long getFsReadTime() {
-    return fsReadTimeMillis;
+    return 0;
   }
 }

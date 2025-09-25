@@ -3491,7 +3491,7 @@ public class RSRpcServices
         // client requested metrics, retrieve the metrics from the scanner context.
         if (scanMetrics != null) {
           if (rpcCall != null) {
-            scannerContext.getMetrics().setCounter(ServerSideScanMetrics.FS_READ_TIME_METRIC_NAME,
+            scanMetrics.setCounter(ServerSideScanMetrics.FS_READ_TIME_METRIC_NAME,
               rpcCall.getFsReadTime());
           }
         }
